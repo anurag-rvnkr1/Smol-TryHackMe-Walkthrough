@@ -1,14 +1,17 @@
-title: "TryHackMe CTF"
-description: "Professional CTF documentation."
-
+title: "Smol — TryHackMe CTF Documentation"
+description: "Portfolio-grade security documentation for the TryHackMe Smol room."
 theme: jekyll-theme-primer
-
+markdown: kramdown
+highlighter: rouge
+permalink: pretty
+sass:
+  style: compressed
 plugins:
   - jekyll-relative-links
-
 relative_links:
   enabled: true
   collections: true
-
 include:
-  - docs
+  - assets
+  - Documentation
+  - Resources
