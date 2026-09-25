@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#050a12"/><stop offset="1" stop-color="#0a1220"/></linearGradient></defs>
+<rect width="1600" height="900" fill="url(#bg)"/>
+<rect x="70" y="70" width="1460" height="760" rx="28" fill="#0f172a" stroke="#334155" stroke-width="2"/>
+<rect x="70" y="70" width="1460" height="88" rx="28" fill="#111827"/>
+<circle cx="112" cy="114" r="12" fill="#ef4444"/><circle cx="150" cy="114" r="12" fill="#f59e0b"/><circle cx="188" cy="114" r="12" fill="#22c55e"/>
+<text x="230" y="124" fill="#cbd5e1" font-family="ui-monospace,Menlo,monospace" font-size="28" font-weight="700">SMOL — TRYHACKME</text>
+<text x="105" y="225" fill="#22d3ee" font-family="ui-monospace,Menlo,monospace" font-size="34" font-weight="800">12 / BACKUP PASSWORD RECOVERY</text>
+<rect x="105" y="260" width="1390" height="90" rx="14" fill="#020617" stroke="#334155"/>
+<text x="135" y="318" fill="#93c5fd" font-family="ui-monospace,Menlo,monospace" font-size="25">$ zip2john wordpress.old.zip &gt; wp_hash.txt</text>
+<text x="135" y="412" fill="#dbeafe" font-family="ui-monospace,Menlo,monospace" font-size="28">Encrypted ZIP hash extracted</text>
+<text x="135" y="476" fill="#dbeafe" font-family="ui-monospace,Menlo,monospace" font-size="28">John the Ripper used with rockyou.txt</text>
+<text x="135" y="540" fill="#f59e0b" font-family="ui-monospace,Menlo,monospace" font-size="28">Archive password: [REDACTED]</text>
+<text x="135" y="604" fill="#dbeafe" font-family="ui-monospace,Menlo,monospace" font-size="28">Archive contents recovered for offline inspection</text>
+<rect x="105" y="730" width="1390" height="52" rx="12" fill="#0b1220" stroke="#1e293b"/>
+<text x="135" y="765" fill="#64748b" font-family="ui-monospace,Menlo,monospace" font-size="20">SMOL / PORTFOLIO-SAFE EVIDENCE • ANSWER STRINGS REDACTED</text>
+</svg>
