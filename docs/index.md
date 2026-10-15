@@ -1,40 +1,203 @@
-# Smol — TryHackMe Walkthrough
-
-<link rel="stylesheet" href="assets/css/custom.css">
-
-<div class="hero">
-
-<img src="assets/img/01-cover-hero.svg" class="hero-image">
-
-<div class="hero-overlay">
-
-# Smol — Professional Penetration Testing Walkthrough
-
-### WordPress Exploitation • Local File Inclusion • Remote Code Execution • Linux Privilege Escalation
-
-<p class="hero-subtitle">
-A premium cybersecurity portfolio documenting the complete exploitation chain of the <strong>TryHackMe Smol</strong> Capture The Flag room using professional penetration testing methodology.
-</p>
-
-<div class="hero-badges">
-
-![Platform](https://img.shields.io/badge/Platform-TryHackMe-red?style=for-the-badge\&logo=tryhackme)
-
-![Category](https://img.shields.io/badge/Category-Web%20Application%20Security-6C63FF?style=for-the-badge)
-
-![Difficulty](https://img.shields.io/badge/Difficulty-Intermediate-orange?style=for-the-badge)
-
-![Portfolio](https://img.shields.io/badge/Portfolio-Cybersecurity-success?style=for-the-badge)
-
-</div>
-</div>
+<div class="ctf-hero">
+  <h1>Smol — TryHackMe</h1>
+  <p>
+    A technical penetration testing case study documenting the exploitation
+    of a WordPress application and the subsequent compromise of a Linux host
+    in a controlled TryHackMe Capture The Flag environment.
+  </p>
+  <div class="ctf-badges">
+    <span class="ctf-badge">TryHackMe</span>
+    <span class="ctf-badge">Intermediate</span>
+    <span class="ctf-badge">Linux</span>
+    <span class="ctf-badge">WordPress</span>
+    <span class="ctf-badge">LFI</span>
+    <span class="ctf-badge">RCE</span>
+    <span class="ctf-badge">Privilege Escalation</span>
+  </div>
 </div>
 
----
+# Mission
+
+This case study documents the assessment of the **Smol** TryHackMe room. The engagement follows the documented attack path from external reconnaissance through WordPress exploitation, credential discovery, SSH-based user pivoting, and root privilege escalation.
+
+The emphasis is on understanding how weaknesses across application code, configuration management, credential storage, backup handling, and Linux privilege delegation can combine to produce a complete host compromise.
+
+Sensitive credentials, password hashes, private keys, and challenge flags are intentionally redacted in this portfolio version. Original evidence paths are retained.
+
+<div class="callout info">
+  <div class="callout-title">Assessment Scope</div>
+  This write-up describes activity in a controlled cybersecurity training
+  environment. The target IP address, exact service versions, recovered
+  secret values, and other details not provided in the source are not
+  reconstructed.
+</div>
+
+## Quick Overview
+
+<div class="ctf-card-grid">
+  <div class="ctf-card">
+    <div class="ctf-card-title">Platform</div>
+    <div class="ctf-card-value">TryHackMe</div>
+  </div>
+  <div class="ctf-card">
+    <div class="ctf-card-title">Target</div>
+    <div class="ctf-card-value">Smol — Linux / WordPress</div>
+  </div>
+  <div class="ctf-card">
+    <div class="ctf-card-title">Reported Difficulty</div>
+    <div class="ctf-card-value">Intermediate</div>
+  </div>
+  <div class="ctf-card">
+    <div class="ctf-card-title">Initial Attack Vector</div>
+    <div class="ctf-card-value">WordPress Plugin LFI</div>
+  </div>
+  <div class="ctf-card">
+    <div class="ctf-card-title">Execution Path</div>
+    <div class="ctf-card-value">PHP Backdoor / RCE</div>
+  </div>
+  <div class="ctf-card">
+    <div class="ctf-card-title">Final Objective</div>
+    <div class="ctf-card-value">Root Access</div>
+  </div>
+</div>
+
+## Assessment Objectives
+
+- Identify exposed network services and fingerprint the target.
+- Enumerate the WordPress installation, plugins, users, and application endpoints.
+- Investigate the reported `jsmol2wp` Local File Inclusion vulnerability.
+- Examine the disclosed configuration and the reported PHP backdoor in the Hello Dolly plugin.
+- Validate operating-system command execution and obtain an interactive shell.
+- Investigate database authentication material, password hashes, SSH keys, and backup archives.
+- Document SSH-based lateral movement and the reported sudo-based privilege escalation.
+- Derive defensive recommendations from the documented attack path.
+
+## Navigation
+
+<div class="ctf-toc">
+  <div class="ctf-toc-title">Documentation Map</div>
+  <ul>
+    <li><a href="#mission">Mission</a></li>
+    <li><a href="#quick-overview">Quick Overview</a></li>
+    <li><a href="#assessment-objectives">Assessment Objectives</a></li>
+    <li><a href="#target-and-lab-information">Target and Lab Information</a></li>
+    <li><a href="#skills-and-tools">Skills and Tools</a></li>
+    <li><a href="#attack-chain">Attack Chain</a></li>
+    <li><a href="#phase-i--external-reconnaissance">Phase I — External Reconnaissance</a></li>
+    <li><a href="#phase-ii--web-enumeration">Phase II — Web Enumeration</a></li>
+    <li><a href="#phase-iii--wordpress-enumeration">Phase III — WordPress Enumeration</a></li>
+    <li><a href="#phase-iv--local-file-inclusion">Phase IV — Local File Inclusion</a></li>
+    <li><a href="#phase-v--backdoor-analysis">Phase V — Backdoor Analysis</a></li>
+    <li><a href="#phase-vi--remote-code-execution">Phase VI — Remote Code Execution</a></li>
+    <li><a href="#phase-vii--interactive-shell">Phase VII — Interactive Shell</a></li>
+    <li><a href="#phase-viii--credential-harvesting">Phase VIII — Credential Harvesting</a></li>
+    <li><a href="#phase-ix--offline-password-analysis">Phase IX — Offline Password Analysis</a></li>
+    <li><a href="#phase-x--ssh-lateral-movement">Phase X — SSH Lateral Movement</a></li>
+    <li><a href="#phase-xi--backup-analysis">Phase XI — Backup Analysis</a></li>
+    <li><a href="#phase-xii--additional-user-discovery">Phase XII — Additional User Discovery</a></li>
+    <li><a href="#phase-xiii--privilege-escalation">Phase XIII — Privilege Escalation</a></li>
+    <li><a href="#consolidated-findings">Consolidated Findings</a></li>
+    <li><a href="#mitre-attck-context">MITRE ATT&amp;CK Context</a></li>
+    <li><a href="#defensive-recommendations">Defensive Recommendations</a></li>
+    <li><a href="#lessons-learned">Lessons Learned</a></li>
+    <li><a href="#references">References</a></li>
+    <li><a href="#repository-contents">Repository Contents</a></li>
+    <li><a href="#responsible-use">Responsible Use</a></li>
+  </ul>
+</div>
+
+## Target and Lab Information
+
+| Assessment Item | Documented Information |
+|---|---|
+| Platform | TryHackMe |
+| Room | Smol |
+| Assessment type | Black-box web application assessment with post-exploitation |
+| Primary technology | WordPress |
+| Operating system | Linux |
+| Web stack | Apache and PHP, as reported in the original notes |
+| Initial attack vector | Local File Inclusion in the `jsmol2wp` plugin |
+| Subsequent execution path | Reported PHP backdoor in Hello Dolly |
+| Lateral movement | SSH authentication using discovered authentication material |
+| Privilege escalation | Reported excessive sudo permissions |
+| Final objective | Root access |
+| Environment | Controlled training laboratory |
+
+The source uses `TARGET_IP` as a placeholder rather than supplying a specific address. No target IP, port number, exact service version, or hostname is inferred here.
+
+## Skills and Tools
+
+<div class="ctf-card-grid">
+  <div class="ctf-card">
+    <div class="ctf-card-title">Reconnaissance</div>
+    <div class="ctf-card-value">Nmap, service fingerprinting, HTTP enumeration</div>
+  </div>
+  <div class="ctf-card">
+    <div class="ctf-card-title">Web Enumeration</div>
+    <div class="ctf-card-value">Gobuster, robots.txt, WordPress discovery</div>
+  </div>
+  <div class="ctf-card">
+    <div class="ctf-card-title">CMS Assessment</div>
+    <div class="ctf-card-value">WPScan, plugin and user enumeration</div>
+  </div>
+  <div class="ctf-card">
+    <div class="ctf-card-title">Exploitation</div>
+    <div class="ctf-card-value">LFI analysis, PHP backdoor review, RCE validation</div>
+  </div>
+  <div class="ctf-card">
+    <div class="ctf-card-title">Post-Exploitation</div>
+    <div class="ctf-card-value">Netcat, Python PTY, filesystem and credential review</div>
+  </div>
+  <div class="ctf-card">
+    <div class="ctf-card-title">Privilege Escalation</div>
+    <div class="ctf-card-value">SSH, sudo review, backup analysis, John / Hashcat methodology</div>
+  </div>
+</div>
+
+| Tool | Documented purpose |
+|---|---|
+| Nmap | Network discovery, service detection, and initial fingerprinting |
+| Gobuster | Web directory enumeration |
+| WPScan | WordPress user, plugin, and theme enumeration |
+| Netcat | Reverse-shell listener |
+| Python | Pseudo-terminal (PTY) stabilization |
+| SSH | Remote user authentication and pivoting |
+| John / Hashcat | Offline password-recovery methodology |
+| `zipinfo` / `unzip` | Backup archive inspection and extraction |
+
+## Attack Chain
+
+<div class="attack-chain">
+  <div class="attack-step">Reconnaissance</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">WordPress Enumeration</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">Plugin LFI</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">Configuration Disclosure</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">PHP Backdoor / RCE</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">Interactive Shell</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">Credential Discovery</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">SSH Pivot</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">Backup Analysis</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">sudo Abuse</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">Root</div>
+</div>
+
+The source describes this end-to-end progression. Individual evidence artifacts are retained below, while sensitive values remain redacted.
 
 ## Terminal Banner
 
-```bash
+The original notes included the following high-level assessment transcript:
+
+```text
 ┌──(anurag㉿cybersecurity)-[~/TryHackMe/Smol]
 └─$ python3 exploit.py
 
@@ -51,1497 +214,308 @@ A premium cybersecurity portfolio documenting the complete exploitation chain of
 root@smol:/#
 ```
 
----
-
-# Navigation
-
-<div class="toc-grid">
-
-| Section                               | Description                             |
-| ------------------------------------- | --------------------------------------- |
-| 🎯 Executive Summary                  | Assessment overview and objectives      |
-| 📊 Assessment Dashboard               | Skills, tools, findings and attack path |
-| ⚔️ Attack Kill Chain                  | End-to-end compromise timeline          |
-| 🌐 Phase I — Reconnaissance           | Network discovery                       |
-| 🕸️ Phase II — Web Enumeration        | Directory and WordPress discovery       |
-| 🧩 Phase III — WordPress Enumeration  | Plugin and user enumeration             |
-| 💥 Phase IV — Local File Inclusion    | Initial exploitation                    |
-| 🧠 Phase V — Backdoor Analysis        | Hello Dolly PHP backdoor                |
-| ⚡ Phase VI — Remote Code Execution    | Command execution                       |
-| 🐚 Phase VII — Reverse Shell          | Interactive shell                       |
-| 🔐 Phase VIII — Credential Harvesting | Database and filesystem secrets         |
-| 🔑 Phase IX — SSH Pivot               | Lateral movement                        |
-| 📦 Phase X — Backup Analysis          | Historical credentials                  |
-| 👑 Phase XI — Privilege Escalation    | Root access                             |
-| 🎯 MITRE ATT&CK                       | ATT&CK mapping                          |
-| 🛡️ Blue Team                         | Detection and remediation               |
-| 📚 Lessons Learned                    | Offensive & defensive takeaways         |
-
-</div>
+This is a summary transcript from the source documentation, not a substitute for the individual command output or independently verified evidence.
 
 ---
 
-# Executive Summary
+## Phase I — External Reconnaissance
 
-> **Smol** is an intermediate-level WordPress security assessment that demonstrates how multiple individually understandable weaknesses can be chained together into a complete Linux host compromise.
+The assessment began by identifying exposed services and determining which service offered the most promising application-level attack surface.
 
-This walkthrough follows a **professional Red Team engagement format** instead of a traditional CTF writeup. Every phase explains the attacker methodology, security impact, and defensive recommendations while intentionally hiding all challenge flags and sensitive credentials.
-
-<div class="info-card success">
-
-### Assessment Outcome
-
-* Complete web application compromise.
-* WordPress configuration disclosure.
-* Remote command execution through malicious plugin functionality.
-* Interactive Linux shell.
-* Credential harvesting from multiple sources.
-* SSH lateral movement across users.
-* Full **root privilege escalation** through sudo misconfiguration.
-
-</div>
-
----
-
-# Assessment Dashboard
-
-<div class="dashboard-grid">
-
-<div class="metric-card">
-
-## 🎯 Difficulty
-
-**Intermediate**
-
-WordPress + Linux
-
-</div>
-
-<div class="metric-card">
-
-## 💻 Target
-
-**Linux**
-
-Apache • PHP • WordPress
-
-</div>
-
-<div class="metric-card">
-
-## 🧩 Category
-
-**Web Security**
-
-LFI • RCE • PrivEsc
-
-</div>
-
-<div class="metric-card">
-
-## 👨‍💻 Final Access
-
-**Root**
-
-Complete System Compromise
-
-</div>
-
-</div>
-
----
-
-## Engagement Snapshot
-
-| Assessment Item     | Details                               |
-| ------------------- | ------------------------------------- |
-| Platform            | TryHackMe                             |
-| Room                | Smol                                  |
-| Assessment Type     | Black Box Web Application Assessment  |
-| Primary Technology  | WordPress CMS                         |
-| Operating System    | Linux                                 |
-| Attack Vector       | Vulnerable WordPress Plugin           |
-| Initial Access      | Local File Inclusion                  |
-| Final Objective     | Root Access                           |
-| Documentation Style | Enterprise Penetration Testing Report |
-
----
-
-# Skills Demonstrated
-
-<div class="skills-grid">
-
-<div class="skill-box">
-
-### 🌐 Reconnaissance
-
-* Nmap
-* Service Fingerprinting
-* HTTP Enumeration
-* Attack Surface Discovery
-
-</div>
-
-<div class="skill-box">
-
-### 🕸️ Web Enumeration
-
-* Gobuster
-* robots.txt Analysis
-* Directory Enumeration
-* WordPress Fingerprinting
-
-</div>
-
-<div class="skill-box">
-
-### 🧩 WordPress Security
-
-* WPScan
-* Plugin Enumeration
-* XML-RPC Review
-* User Enumeration
-
-</div>
-
-<div class="skill-box">
-
-### 💥 Exploitation
-
-* Local File Inclusion
-* Configuration Disclosure
-* PHP Backdoor Analysis
-* Remote Code Execution
-
-</div>
-
-<div class="skill-box">
-
-### 🐚 Linux Post Exploitation
-
-* Reverse Shell
-* TTY Stabilization
-* Environment Enumeration
-* Credential Harvesting
-
-</div>
-
-<div class="skill-box">
-
-### 👑 Privilege Escalation
-
-* SSH Pivot
-* Backup Analysis
-* sudo Enumeration
-* Root Escalation
-
-</div>
-
-</div>
-
----
-
-# Attack Kill Chain
-
-## End-to-End Compromise Timeline
-
-<img src="assets/img/01-cover-hero.svg" class="timeline-banner">
-
-<div class="timeline">
-
-<div class="timeline-item">
-
-### 01 — External Reconnaissance
-
-**Objective**
-
-Identify publicly exposed services and technologies.
-
-**Result**
-
-HTTP and SSH attack surface identified.
-
-</div>
-
-<div class="timeline-item">
-
-### 02 — Web Enumeration
-
-**Objective**
-
-Discover hidden directories and administrative endpoints.
-
-**Result**
-
-WordPress installation fingerprinted.
-
-</div>
-
-<div class="timeline-item">
-
-### 03 — WordPress Enumeration
-
-**Objective**
-
-Identify vulnerable plugins and users.
-
-**Result**
-
-`jsmol2wp` plugin identified as vulnerable.
-
-</div>
-
-<div class="timeline-item">
-
-### 04 — Initial Exploitation
-
-**Objective**
-
-Exploit Local File Inclusion vulnerability.
-
-**Result**
-
-`wp-config.php` successfully disclosed.
-
-</div>
-
-<div class="timeline-item">
-
-### 05 — Code Review
-
-**Objective**
-
-Inspect installed WordPress plugins.
-
-**Result**
-
-Hidden PHP backdoor discovered.
-
-</div>
-
-<div class="timeline-item">
-
-### 06 — Remote Code Execution
-
-**Objective**
-
-Validate arbitrary operating system command execution.
-
-**Result**
-
-Commands executed as web server user.
-
-</div>
-
-<div class="timeline-item">
-
-### 07 — Initial Access
-
-**Objective**
-
-Upgrade RCE into interactive Linux shell.
-
-**Result**
-
-Fully interactive reverse shell established.
-
-</div>
-
-<div class="timeline-item">
-
-### 08 — Credential Harvesting
-
-**Objective**
-
-Recover credentials from configuration files and database.
-
-**Result**
-
-Password hashes and authentication material identified.
-
-</div>
-
-<div class="timeline-item">
-
-### 09 — Lateral Movement
-
-**Objective**
-
-Pivot into additional Linux users.
-
-**Result**
-
-SSH authentication successful.
-
-</div>
-
-<div class="timeline-item">
-
-### 10 — Backup Analysis
-
-**Objective**
-
-Investigate historical archives.
-
-**Result**
-
-Additional configuration and credentials discovered.
-
-</div>
-
-<div class="timeline-item">
-
-### 11 — Privilege Escalation
-
-**Objective**
-
-Escalate privileges through sudo configuration.
-
-**Result**
-
-**Root Access Achieved**
-
-</div>
-
-</div>
-
----
-
-# Attack Flow Diagram
-
-```text
-Internet
-   │
-   ▼
-Apache Web Server
-   │
-   ▼
-WordPress CMS
-   │
-   ▼
-jsmol2wp Plugin
-   │
-   ▼
-Local File Inclusion
-   │
-   ▼
-wp-config.php
-   │
-   ▼
-Administrator Access
-   │
-   ▼
-Hello Dolly PHP Backdoor
-   │
-   ▼
-Remote Code Execution
-   │
-   ▼
-www-data Shell
-   │
-   ▼
-Credential Harvesting
-   │
-   ├────► Database Hashes
-   │
-   ├────► SSH Keys
-   │
-   ├────► Backup Archive
-   │
-   ▼
-SSH Pivot
-   │
-   ▼
-Additional User Access
-   │
-   ▼
-sudo Misconfiguration
-   │
-   ▼
-ROOT
-```
-
----
-
-# Visual Assessment Timeline
-
-<div class="figure-grid">
-
-<div>
-
-![Recon](assets/img/02-network-recon.svg)
-
-**Figure 2**
-
-Network Enumeration
-
-</div>
-
-<div>
-
-![Gobuster](assets/img/03-web-enumeration.svg)
-
-**Figure 3**
-
-Web Enumeration
-
-</div>
-
-<div>
-
-![WPScan](assets/img/04-plugin-enumeration.svg)
-
-**Figure 4**
-
-Plugin Enumeration
-
-</div>
-
-<div>
-
-![LFI](assets/img/05-lfi-wp-config-redacted.svg)
-
-**Figure 5**
-
-Configuration Disclosure
-
-</div>
-
-</div>
-
----
-
-# Assessment Scope
-
-<div class="scope-card">
-
-## Scope of Engagement
-
-<table><table-row><table-cell width="220">**Target**</table-cell><table-cell>WordPress Web Application hosted inside a Linux environment.</table-cell></table-row><table-row><table-cell>**Methodology**</table-cell><table-cell>Black-box penetration testing with authenticated post-exploitation.</table-cell></table-row><table-row><table-cell>**Objective**</table-cell><table-cell>Obtain full administrative control while documenting each phase.</table-cell></table-row><table-row><table-cell>**Environment**</table-cell><table-cell>Controlled TryHackMe laboratory.</table-cell></table-row><table-row><table-cell>**Reporting Standard**</table-cell><table-cell>Professional Red Team Technical Assessment.</table-cell></table-row></table>
-
-</div>
-
----
-
-# Methodology
-
-The assessment follows an industry-style penetration testing workflow.
-
-<div class="methodology-grid">
-
-| Phase                | Objective                                |
-| -------------------- | ---------------------------------------- |
-| Reconnaissance       | Discover exposed services.               |
-| Enumeration          | Identify technologies and plugins.       |
-| Exploitation         | Validate LFI vulnerability.              |
-| Initial Access       | Execute commands and obtain shell.       |
-| Post Exploitation    | Harvest credentials and enumerate users. |
-| Lateral Movement     | Pivot through SSH authentication.        |
-| Privilege Escalation | Abuse excessive sudo permissions.        |
-| Reporting            | Document findings and remediation.       |
-
-</div>
-
----
-
-# Tools Used During Assessment
-
-<div class="tool-grid">
-
-| Tool            | Purpose                               |
-| --------------- | ------------------------------------- |
-| Nmap            | Network Discovery                     |
-| Gobuster        | Directory Enumeration                 |
-| WPScan          | WordPress Enumeration                 |
-| Netcat          | Reverse Shell Listener                |
-| Python          | TTY Stabilization                     |
-| SSH             | User Pivot                            |
-| John / Hashcat  | Offline Password Recovery Methodology |
-| zipinfo / unzip | Backup Archive Analysis               |
-
-</div>
-
----
-
-# Risk Overview Dashboard
-
-<div class="risk-grid">
-
-<div class="risk critical">
-
-## 🔴 Critical
-
-Remote Code Execution
-
-PHP Backdoor
-
-Privilege Escalation
-
-</div>
-
-<div class="risk high">
-
-## 🟠 High
-
-Local File Inclusion
-
-Database Credential Exposure
-
-SSH Key Exposure
-
-Backup Credential Disclosure
-
-</div>
-
-<div class="risk medium">
-
-## 🟡 Medium
-
-User Enumeration
-
-Version Disclosure
-
-XML-RPC Exposure
-
-</div>
-
-</div>
-
----
-
-# What Makes This Walkthrough Different?
-
-<div class="feature-grid">
-
-<div class="feature-card">
-
-## 📝 Enterprise Reporting
-
-Professional penetration testing structure instead of challenge notes.
-
-</div>
-
-<div class="feature-card">
-
-## 🎨 Portfolio Optimized
-
-Designed specifically for GitHub Pages and recruiter portfolios.
-
-</div>
-
-<div class="feature-card">
-
-## 🔒 Plagiarism Resistant
-
-All flags, passwords, hashes, and SSH keys removed.
-
-</div>
-
-<div class="feature-card">
-
-## 🛡️ Defensive Perspective
-
-Every offensive phase includes Blue Team recommendations.
-
-</div>
-
-<div class="feature-card">
-
-## 🎯 MITRE ATT&CK Mapping
-
-Complete ATT&CK alignment and detection opportunities.
-
-</div>
-
-<div class="feature-card">
-
-## 📱 Responsive Layout
-
-Works with Jekyll Hacker Theme and custom SCSS.
-
-</div>
-
-</div>
-
----
-
----
-
-# 🌐 Phase I — External Reconnaissance
-
-> *Every successful penetration test begins with understanding the exposed attack surface. Before interacting with application logic, the infrastructure itself must be mapped.*
-
----
-
-<div class="phase-banner">
-
-## Initial Attack Surface Discovery
-
-**Objective**
-
-Identify publicly exposed services, operating system characteristics, web technologies, and potential entry points.
-
-</div>
-
----
-
-## Figure 02 — Network Enumeration
+### Figure 02 — Network Enumeration
 
 ![Network Enumeration](assets/img/02-network-recon.svg)
 
-<div class="figure-caption">
+*Figure 02. Initial TCP service enumeration and operating-system fingerprinting, as described in the source documentation.*
 
-**Figure 02.** Initial TCP service enumeration and operating system fingerprinting.
+### Network scan
 
-</div>
+The source records the following command:
 
----
-
-## Reconnaissance Strategy
-
-The assessment started with passive network discovery followed by targeted service fingerprinting.
-
-<table><table-section header><table-row header><table-cell header>Goal</table-cell><table-cell header>Reason</table-cell></table-row></table-section><table-row><table-cell>Discover Open Ports</table-cell><table-cell>Identify externally accessible services.</table-cell></table-row><table-row><table-cell>Fingerprint Services</table-cell><table-cell>Determine technologies and versions.</table-cell></table-row><table-row><table-cell>Identify Web Stack</table-cell><table-cell>Prepare for application enumeration.</table-cell></table-row><table-row><table-cell>Fingerprint Operating System</table-cell><table-cell>Select appropriate privilege escalation methodology.</table-cell></table-row></table>
-
----
-
-## Reconnaissance Terminal
-
-```bash id="ckpk9u"
-$ nmap -sC -sV -Pn TARGET_IP
-
-Starting Nmap...
-Scanning TCP Ports...
-Service Detection Enabled...
-HTTP Service Detected
-SSH Service Detected
-Linux Host Fingerprinted
-
-Scan Complete.
+```bash
+nmap -sC -sV -Pn TARGET_IP
 ```
 
----
+**Purpose**
 
-## Network Findings Dashboard
+- `-sC` runs Nmap's default script set.
+- `-sV` attempts service and version detection.
+- `-Pn` skips host discovery and treats the target as online for scanning.
 
-<div class="dashboard-grid">
+The original notes report HTTP and SSH services and identify a Linux host. They do not include the complete raw Nmap output, exact ports, or detected version strings.
 
-<div class="metric-card">
+### Reported observations
 
-### 🌐 HTTP
+| Observation | Assessment relevance |
+|---|---|
+| HTTP service | Primary application attack surface |
+| Apache and PHP indicators | Support targeted web-stack investigation |
+| WordPress indicators | Justify CMS-specific enumeration |
+| SSH service | Potential remote authentication path |
+| Linux host | Establishes the context for later Linux privilege-escalation analysis |
 
-**Primary Attack Surface**
+The web service was prioritized because the reported WordPress application exposed a broader application-level attack surface than the initial service inventory alone revealed.
 
-Apache + PHP
+### Reconnaissance evidence
 
-</div>
+![Reconnaissance Cover](assets/img/01-cover-hero.svg)
 
-<div class="metric-card">
+*Figure 01. Original cover illustration retained from the source repository.*
 
-### 🔐 SSH
+### Defensive perspective
 
-**Remote Authentication Service**
-
-Available
-
-</div>
-
-<div class="metric-card">
-
-### 🐧 Linux
-
-**Target Platform**
-
-Unix-like Operating System
-
-</div>
-
-<div class="metric-card">
-
-### 🌍 CMS Indicators
-
-**WordPress Detected**
-
-Application Layer Enumeration Begins
-
-</div>
-
-</div>
+A limited number of exposed network services does not imply a low-risk system. Web applications, third-party plugins, and administrative functionality can introduce significant risk even when the network-facing footprint appears small.
 
 ---
 
-## Service Enumeration Analysis
+## Phase II — Web Enumeration
 
-<div class="info-card info">
+The next phase investigated the WordPress application for administrative endpoints, directories, plugin resources, and other publicly accessible paths.
 
-### Why HTTP Became the Primary Target
-
-The HTTP service exposed multiple characteristics indicating a **WordPress-based application**, making it significantly more attractive than attempting authentication attacks directly against SSH.
-
-**Key Indicators**
-
-* PHP application responses.
-* WordPress asset structure.
-* CMS administrative endpoints.
-* Plugin directory exposure.
-
-</div>
-
----
-
-## Operating System Fingerprinting
-
-<table><table-section header><table-row header><table-cell header>Observation</table-cell><table-cell header>Security Value</table-cell></table-row></table-section><table-row><table-cell>Linux Host</table-cell><table-cell>Privilege escalation strategy changes.</table-cell></table-row><table-row><table-cell>Apache Web Server</table-cell><table-cell>PHP execution environment.</table-cell></table-row><table-row><table-cell>SSH Enabled</table-cell><table-cell>Potential lateral movement path.</table-cell></table-row><table-row><table-cell>PHP Runtime</table-cell><table-cell>Plugin execution environment.</table-cell></table-row></table>
-
----
-
-## Security Observation
-
-<div class="info-card warning">
-
-### Small Surface ≠ Small Risk
-
-The machine exposed very few network services.
-
-However, **application-layer attack surfaces are frequently much larger** than network scans suggest.
-
-This assessment intentionally transitioned from infrastructure reconnaissance into CMS-specific enumeration.
-
-</div>
-
----
-
-# Reconnaissance Timeline
-
-<div class="timeline">
-
-<div class="timeline-item">
-
-### Step 01
-
-TCP Scan
-
-Service Identification
-
-</div>
-
-<div class="timeline-item">
-
-### Step 02
-
-Version Detection
-
-Technology Fingerprinting
-
-</div>
-
-<div class="timeline-item">
-
-### Step 03
-
-Operating System Identification
-
-Linux Confirmed
-
-</div>
-
-<div class="timeline-item">
-
-### Step 04
-
-HTTP Attack Surface Identified
-
-WordPress Indicators Found
-
-</div>
-
-</div>
-
----
-
-# 🕸️ Phase II — Web Enumeration
-
-> *Application-layer enumeration reveals hidden functionality that infrastructure scans cannot detect.*
-
----
-
-<div class="phase-banner">
-
-## Discovering the WordPress Attack Surface
-
-**Objective**
-
-Identify directories, administrative portals, plugins, themes, and publicly accessible application resources.
-
-</div>
-
----
-
-## Figure 03 — Web Directory Enumeration
+### Figure 03 — Directory Enumeration
 
 ![Gobuster Enumeration](assets/img/03-web-enumeration.svg)
 
-<div class="figure-caption">
+*Figure 03. Web directory enumeration, as documented in the original walkthrough.*
 
-**Figure 03.** Directory enumeration against the WordPress application using Gobuster.
+### Gobuster command
 
-</div>
-
----
-
-## Enumeration Methodology
-
-Directory brute forcing identifies hidden application resources.
-
-### Primary Enumeration Goals
-
-<table><table-section header><table-row header><table-cell header>Target</table-cell><table-cell header>Purpose</table-cell></table-row></table-section><table-row><table-cell>Administrative Portal</table-cell><table-cell>Authentication interface.</table-cell></table-row><table-row><table-cell>Plugin Directories</table-cell><table-cell>Third-party attack surface.</table-cell></table-row><table-row><table-cell>Theme Directories</table-cell><table-cell>CMS customization review.</table-cell></table-row><table-row><table-cell>robots.txt</table-cell><table-cell>Information disclosure.</table-cell></table-row><table-row><table-cell>Uploads</table-cell><table-cell>Potential file exposure.</table-cell></table-row></table>
-
----
-
-## Gobuster Terminal Output
-
-```bash id="0jveii"
-$ gobuster dir -u http://TARGET_IP \
+```bash
+gobuster dir -u http://TARGET_IP \
 -w common.txt
+```
 
+The command uses Gobuster's directory-enumeration mode against the HTTP application with `common.txt` as the wordlist.
+
+The source lists the following discovered paths:
+
+```text
 /wp-admin
 /wp-login.php
 /wp-content
 /wp-includes
 /robots.txt
 /xmlrpc.php
-
-Enumeration Complete.
 ```
 
----
+These paths indicate common WordPress administrative, authentication, content, core-library, and remote-procedure-call surfaces. Their discovery does not, by itself, establish that every endpoint is vulnerable.
 
-## Web Enumeration Dashboard
+### Enumeration findings
 
-<div class="dashboard-grid">
+| Path | Purpose in the assessment |
+|---|---|
+| `/wp-admin` | WordPress administration interface |
+| `/wp-login.php` | Authentication endpoint |
+| `/wp-content` | Plugin, theme, and upload resources |
+| `/wp-includes` | WordPress core libraries |
+| `/robots.txt` | Public indexing instructions and possible reconnaissance clues |
+| `/xmlrpc.php` | WordPress XML-RPC functionality |
 
-<div class="metric-card">
+### robots.txt review
 
-### 📂 Admin Portal
+The original notes report that `robots.txt` exposed indexing rules and helped confirm parts of the WordPress directory structure. This is treated as a reconnaissance observation, not an independently established vulnerability.
 
-`/wp-admin`
+### Result
 
-</div>
-
-<div class="metric-card">
-
-### 🔑 Login Portal
-
-`/wp-login.php`
-
-</div>
-
-<div class="metric-card">
-
-### 🧩 Plugins
-
-`/wp-content/plugins`
-
-</div>
-
-<div class="metric-card">
-
-### 📄 robots.txt
-
-Information Disclosure Surface
-
-</div>
-
-</div>
+The application was identified as WordPress, allowing the assessment to move from general directory enumeration to targeted CMS and plugin analysis.
 
 ---
 
-## robots.txt Review
+## Phase III — WordPress Enumeration
 
-<div class="info-card info">
+WordPress plugin code was the primary focus because third-party components can expose vulnerable functionality that is not present in the core CMS.
 
-### Information Disclosure
-
-The robots file exposed indexing rules and confirmed portions of the WordPress directory structure.
-
-While **not a vulnerability**, it contributed valuable reconnaissance information.
-
-</div>
-
----
-
-## WordPress Fingerprinting
-
-The application exposed multiple characteristics confirming WordPress deployment.
-
-<table><table-section header><table-row header><table-cell header>Indicator</table-cell><table-cell header>Purpose</table-cell></table-row></table-section><table-row><table-cell>wp-login.php</table-cell><table-cell>Authentication endpoint.</table-cell></table-row><table-row><table-cell>wp-content</table-cell><table-cell>Plugins & uploads.</table-cell></table-row><table-row><table-cell>wp-includes</table-cell><table-cell>Core WordPress libraries.</table-cell></table-row><table-row><table-cell>Theme Assets</table-cell><table-cell>CMS fingerprinting.</table-cell></table-row></table>
-
----
-
-## Information Disclosure Matrix
-
-<div class="risk-grid">
-
-<div class="risk medium">
-
-### 🟡 Medium
-
-WordPress Version
-
-Plugin Metadata
-
-Theme Metadata
-
-</div>
-
-<div class="risk low">
-
-### 🟢 Low
-
-robots.txt
-
-Directory Structure
-
-Static Assets
-
-</div>
-
-</div>
-
----
-
-## Enumeration Insights
-
-<div class="info-card success">
-
-### Reconnaissance Outcome
-
-The application was confidently identified as a **WordPress CMS** with publicly accessible plugin directories, authentication interfaces, and CMS-specific resources.
-
-This created the foundation for targeted WordPress enumeration.
-
-</div>
-
----
-
-# 🧩 Phase III — WordPress Enumeration
-
-> *Third-party plugins are among the highest-risk components in WordPress environments.*
-
----
-
-<div class="phase-banner">
-
-## WordPress Security Assessment
-
-**Objective**
-
-Enumerate installed plugins, users, XML-RPC functionality, themes, and vulnerable components.
-
-</div>
-
----
-
-## Figure 04 — WPScan Enumeration
+### Figure 04 — WPScan Enumeration
 
 ![WPScan Enumeration](assets/img/04-plugin-enumeration.svg)
 
-<div class="figure-caption">
+*Figure 04. WordPress plugin enumeration and vulnerability discovery, as documented in the source.*
 
-**Figure 04.** WordPress plugin enumeration and vulnerability discovery using WPScan.
-
-</div>
-
----
-
-## WPScan Methodology
-
-<div class="terminal-card">
-
-### Enumeration Command
+### WPScan command
 
 ```bash
 wpscan --url http://TARGET_IP --enumerate u,p,t
 ```
 
+The documented enumeration targets are:
+
+- `u` — users
+- `p` — plugins
+- `t` — themes
+
+The source reports that publicly discoverable users, installed plugins, theme information, and the XML-RPC endpoint were investigated.
+
+### Primary finding: `jsmol2wp`
+
+<div class="key-finding">
+  <div class="key-finding-title">Plugin Vulnerability</div>
+  The source identifies the WordPress plugin `jsmol2wp` as the initial
+  exploitation vector and reports a Local File Inclusion (LFI) vulnerability.
+  The following phase documents the reported configuration disclosure.
 </div>
+
+### Why plugin enumeration matters
+
+| Condition | Potential security consequence |
+|---|---|
+| Outdated plugin | Exposure to known, unpatched vulnerabilities |
+| Custom plugin code | Application-specific security defects |
+| Unsafe file handling | Local file disclosure or traversal |
+| Unauthorized plugin modification | Malicious functionality or server-side execution |
+
+### User enumeration and XML-RPC
+
+The original documentation reports user enumeration and review of XML-RPC availability. It does not publish the recovered usernames in this portfolio version.
+
+XML-RPC was identified as additional attack surface but was not reported as a directly exploited component in this assessment.
+
+### Result
+
+The `jsmol2wp` plugin became the primary focus for active exploitation.
 
 ---
 
-## WPScan Objectives
+## Phase IV — Local File Inclusion
 
-<table><table-section header><table-row header><table-cell header>Enumeration</table-cell><table-cell header>Purpose</table-cell></table-row></table-section><table-row><table-cell>Users</table-cell><table-cell>Authentication intelligence.</table-cell></table-row><table-row><table-cell>Plugins</table-cell><table-cell>Attack surface identification.</table-cell></table-row><table-row><table-cell>Themes</table-cell><table-cell>Technology fingerprinting.</table-cell></table-row><table-row><table-cell>XML-RPC</table-cell><table-cell>Remote functionality review.</table-cell></table-row></table>
+The source reports that the `jsmol2wp` plugin allowed local file disclosure and that the WordPress configuration file was subsequently exposed.
 
----
-
-## Plugin Discovery Dashboard
-
-<div class="dashboard-grid">
-
-<div class="metric-card">
-
-### 🧩 Vulnerable Plugin
-
-**jsmol2wp**
-
-Primary Exploitation Vector
-
-</div>
-
-<div class="metric-card">
-
-### 👤 Users Enumerated
-
-Authentication Intelligence
-
-</div>
-
-<div class="metric-card">
-
-### 🌍 XML-RPC
-
-Endpoint Identified
-
-</div>
-
-<div class="metric-card">
-
-### 🎨 Theme Enumeration
-
-WordPress Theme Fingerprinted
-
-</div>
-
-</div>
-
----
-
-## Vulnerability Discovery
-
-<div class="info-card danger">
-
-### Local File Inclusion Identified
-
-The installed **jsmol2wp** plugin exposed functionality vulnerable to **Local File Inclusion (LFI)**.
-
-**Impact**
-
-* Arbitrary local file disclosure.
-* Configuration exposure.
-* Credential leakage.
-* Initial exploitation path.
-
-</div>
-
----
-
-## Why Plugin Enumeration Matters
-
-Plugins introduce third-party PHP code into WordPress.
-
-<table><table-section header><table-row header><table-cell header>Risk</table-cell><table-cell header>Impact</table-cell></table-row></table-section><table-row><table-cell>Outdated Plugins</table-cell><table-cell>Known CVEs.</table-cell></table-row><table-row><table-cell>Custom Plugins</table-cell><table-cell>Hidden vulnerabilities.</table-cell></table-row><table-row><table-cell>Misconfigured Plugins</table-cell><table-cell>Authentication bypass or disclosure.</table-cell></table-row><table-row><table-cell>Malicious Modifications</table-cell><table-cell>Persistence or web shells.</table-cell></table-row></table>
-
----
-
-## User Enumeration
-
-WPScan successfully identified publicly discoverable WordPress users.
-
-### Security Importance
-
-* Usernames become authentication targets.
-* Credential reuse becomes possible after compromise.
-* Administrator accounts become identifiable.
-
-No usernames or passwords are exposed in this repository.
-
----
-
-## XML-RPC Assessment
-
-<div class="info-card info">
-
-### Additional Attack Surface
-
-XML-RPC expands the WordPress attack surface through remote publishing functionality and authentication endpoints.
-
-Although it was not directly exploited during this assessment, defenders should evaluate whether XML-RPC is required.
-
-</div>
-
----
-
-## Enumeration Risk Dashboard
-
-<div class="risk-grid">
-
-<div class="risk critical">
-
-### 🔴 High-Risk Finding
-
-Vulnerable Third-Party Plugin
-
-</div>
-
-<div class="risk medium">
-
-### 🟡 Medium Findings
-
-User Enumeration
-
-Version Disclosure
-
-XML-RPC Availability
-
-</div>
-
-</div>
-
----
-
-# Phase Summary
-
-<div class="summary-card">
-
-## Enumeration Completed Successfully
-
-* ✅ WordPress fingerprinted.
-* ✅ Administrative interface identified.
-* ✅ Plugin inventory completed.
-* ✅ Vulnerable **jsmol2wp** plugin discovered.
-* ✅ User enumeration completed.
-* ✅ XML-RPC endpoint reviewed.
-
-The assessment now transitions from **information gathering** into **active exploitation** by abusing the Local File Inclusion vulnerability exposed by the vulnerable plugin.
-
-</div>
-
----
-
----
-
-# 💥 Phase IV — Initial Exploitation (Local File Inclusion)
-
-> *The first confirmed vulnerability transformed reconnaissance into exploitation by exposing sensitive files directly from the WordPress installation.*
-
----
-
-<div class="phase-banner danger">
-
-## Local File Inclusion Attack Chain
-
-**Objective**
-
-Exploit the vulnerable **jsmol2wp** plugin to disclose internal WordPress configuration files without authentication.
-
-</div>
-
----
-
-## Figure 05 — Local File Inclusion
+### Figure 05 — LFI and Configuration Disclosure
 
 ![LFI Exploitation](assets/img/05-lfi-wp-config-redacted.svg)
 
-<div class="figure-caption">
+*Figure 05. Reported Local File Inclusion and WordPress configuration disclosure. Sensitive values remain redacted.*
 
-**Figure 05.** Local File Inclusion vulnerability exposing the WordPress configuration file. Sensitive credentials have been removed.
+### Vulnerability explanation
 
+Local File Inclusion occurs when an application uses an insufficiently validated user-controlled path to include or retrieve a local file. Depending on the implementation and execution context, this can expose configuration files or other sensitive filesystem content.
+
+In this case, the source identifies the vulnerable plugin as `jsmol2wp` and reports disclosure of `wp-config.php`.
+
+### Reported exploitation flow
+
+<div class="attack-chain">
+  <div class="attack-step">HTTP Request</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">Plugin File Handling</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">Local File Inclusion</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">wp-config.php</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">Configuration Disclosure</div>
 </div>
+
+The original source does not include the exact vulnerable URL, parameter name, or complete exploitation request. Those details are therefore not reconstructed.
+
+### Why `wp-config.php` matters
+
+WordPress configuration can contain sensitive database connection information and authentication-related secrets.
+
+| Configuration area | Potential impact if exposed |
+|---|---|
+| Database name | Reveals application data architecture |
+| Database username | Exposes a database account identifier |
+| Database password | May enable unauthorized database access |
+| Authentication salts and keys | Can weaken trust in existing authentication material if compromised |
+| Table prefix | Reveals database naming information |
+| Filesystem configuration | May expose installation details |
+
+The source reports recovering database credentials, authentication salts, and filesystem information. The actual secret values are intentionally withheld.
+
+### Security impact
+
+<div class="callout warning">
+  <div class="callout-title">Configuration Exposure</div>
+  File disclosure can cross trust boundaries without immediately providing
+  operating-system command execution. Database credentials and authentication
+  secrets can create additional compromise paths when they are accessible
+  and remain valid.
+</div>
+
+### Defensive controls
+
+- Validate and canonicalize file paths before use.
+- Restrict file access to explicitly permitted directories.
+- Patch or remove the vulnerable plugin.
+- Store application secrets with appropriate access controls.
+- Monitor suspicious path traversal and file-access requests.
+- Rotate credentials and secrets exposed during an incident.
 
 ---
 
-# Vulnerability Overview
+## Phase V — Backdoor Analysis
 
-<div class="info-card danger">
+After configuration disclosure, the original walkthrough describes further investigation of installed plugin files and the discovery of unexpected PHP functionality in the Hello Dolly plugin.
 
-### High Severity — Local File Inclusion (LFI)
-
-The vulnerable WordPress plugin accepted user-controlled file paths without adequate validation, allowing traversal into the application's local filesystem.
-
-**Security Impact**
-
-* Arbitrary file disclosure.
-* WordPress configuration exposure.
-* Database credential leakage.
-* Authentication architecture disclosure.
-
-</div>
-
----
-
-## Exploitation Flow
-
-<div class="exploit-flow">
-
-```text id="jlwmk2"
-Unauthenticated HTTP Request
-            │
-            ▼
- Vulnerable Plugin Parameter
-            │
-            ▼
- Path Traversal / File Inclusion
-            │
-            ▼
- WordPress Filesystem
-            │
-            ▼
- wp-config.php
-            │
-            ▼
- Sensitive Configuration Disclosure
-```
-
-</div>
-
----
-
-## Why `wp-config.php` Is Critical
-
-The WordPress configuration file contains the application's security foundation.
-
-<table><table-section header><table-row header><table-cell header>Configuration Area</table-cell><table-cell header>Security Value</table-cell></table-row></table-section><table-row><table-cell>Database Name</table-cell><table-cell>High</table-cell></table-row><table-row><table-cell>Database Username</table-cell><table-cell>Critical</table-cell></table-row><table-row><table-cell>Database Password</table-cell><table-cell>Critical</table-cell></table-row><table-row><table-cell>Authentication Salts</table-cell><table-cell>High</table-cell></table-row><table-row><table-cell>Table Prefix</table-cell><table-cell>Medium</table-cell></table-row><table-row><table-cell>Filesystem Configuration</table-cell><table-cell>Medium</table-cell></table-row></table>
-
----
-
-## Configuration Disclosure Dashboard
-
-<div class="dashboard-grid">
-
-<div class="metric-card danger">
-
-### 🔐 Database Credentials
-
-Recovered
-
-**[REDACTED]**
-
-</div>
-
-<div class="metric-card danger">
-
-### 🧂 Authentication Salts
-
-Recovered
-
-**[REDACTED]**
-
-</div>
-
-<div class="metric-card warning">
-
-### 📂 Filesystem Layout
-
-Disclosed
-
-WordPress Installation Paths
-
-</div>
-
-<div class="metric-card warning">
-
-### 🗄️ Database Architecture
-
-Mapped
-
-User Authentication Tables
-
-</div>
-
-</div>
-
----
-
-## Security Analysis
-
-<div class="info-card warning">
-
-### Why Configuration Disclosure Is Dangerous
-
-Even without code execution, exposing `wp-config.php` provides attackers with enough information to compromise the application's trust boundary.
-
-Potential consequences include:
-
-* Database compromise.
-* Authentication bypass opportunities.
-* Administrative credential recovery.
-* Session manipulation.
-* Post-exploitation planning.
-
-</div>
-
----
-
-## Blue Team Recommendations
-
-<table><table-section header><table-row header><table-cell header>Mitigation</table-cell><table-cell header>Purpose</table-cell></table-row></table-section><table-row><table-cell>Validate User Input</table-cell><table-cell>Prevent directory traversal.</table-cell></table-row><table-row><table-cell>Restrict File Inclusion</table-cell><table-cell>Limit accessible directories.</table-cell></table-row><table-row><table-cell>Patch Vulnerable Plugin</table-cell><table-cell>Remove known LFI vulnerability.</table-cell></table-row><table-row><table-cell>Monitor Traversal Requests</table-cell><table-cell>Detect exploitation attempts.</table-cell></table-row></table>
-
----
-
-# 🧠 Phase V — WordPress Backdoor Analysis
-
-> *Configuration disclosure enabled authenticated access, leading to manual inspection of installed plugins where a hidden PHP backdoor was identified.*
-
----
-
-<div class="phase-banner">
-
-## Reverse Engineering a Hidden Plugin Backdoor
-
-**Objective**
-
-Inspect installed WordPress plugins for malicious or unexpected server-side functionality.
-
-</div>
-
----
-
-## Figure 06 — Hello Dolly Backdoor
+### Figure 06 — PHP Backdoor Source
 
 ![Backdoor Analysis](assets/img/06-backdoor-source.svg)
 
-<div class="figure-caption">
+*Figure 06. Source-code analysis of the reported hidden PHP functionality. Sensitive payload content has been removed.*
 
-**Figure 06.** Hidden PHP functionality embedded inside the Hello Dolly plugin. Sensitive payload content has been removed.
+### Plugin integrity investigation
 
-</div>
+The original documentation describes manual inspection of plugin source files, focusing on:
 
----
+| Inspection area | Reason |
+|---|---|
+| Plugin entry file | Identify unexpected execution logic |
+| Included PHP files | Find functionality outside the expected plugin behavior |
+| HTTP parameters | Understand how external input reaches server-side code |
+| Command-handling logic | Determine whether operating-system interaction is possible |
 
-## Plugin Integrity Review
+### Reported execution model
 
-Rather than trusting installed plugins, the assessment manually inspected plugin source files.
-
-### Review Focus
-
-<table><table-section header><table-row header><table-cell header>Inspection Target</table-cell><table-cell header>Reason</table-cell></table-row></table-section><table-row><table-cell>Plugin Entry File</table-cell><table-cell>Unexpected execution logic.</table-cell></table-row><table-row><table-cell>Included PHP Files</table-cell><table-cell>Hidden functionality.</table-cell></table-row><table-row><table-cell>HTTP Parameters</table-cell><table-cell>User-controlled execution paths.</table-cell></table-row><table-row><table-cell>Command Handling</table-cell><table-cell>Operating system interaction.</table-cell></table-row></table>
-
----
-
-## Reverse Engineering Findings
-
-<div class="dashboard-grid">
-
-<div class="metric-card danger">
-
-### ⚡ Hidden Execution Logic
-
-Unexpected PHP functionality discovered.
-
-</div>
-
-<div class="metric-card danger">
-
-### 🌐 HTTP Parameter Processing
-
-User-controlled execution path.
-
-</div>
-
-<div class="metric-card danger">
-
-### 💻 Operating System Commands
-
-Command execution capability identified.
-
-</div>
-
-<div class="metric-card warning">
-
-### 🔒 Authentication Context
-
-Executed through authenticated WordPress environment.
-
-</div>
-
-</div>
-
----
-
-## Backdoor Execution Model
-
-```text id="3xvmeb"
+```text
 Authenticated Request
-        │
-        ▼
-Hidden Plugin Endpoint
-        │
-        ▼
+        |
+        v
+Hidden Plugin Functionality
+        |
+        v
 PHP Request Parameter
-        │
-        ▼
-Operating System Command
-        │
-        ▼
-Shell Output Returned
+        |
+        v
+Operating-System Command
+        |
+        v
+Command Output
 ```
 
----
+The source characterizes the functionality as a PHP backdoor capable of operating-system command execution. The exact PHP source, request parameter, and payload are intentionally not reproduced because they are not present in the supplied documentation.
 
-## Why This Finding Is Critical
+### Security significance
 
-<div class="info-card danger">
+Unexpected server-side command execution in a web application can allow an attacker to read sensitive files, execute processes, and establish further access within the permissions of the web server account.
 
-### Critical Severity — Remote Command Execution
+The source reports that the backdoor was the subsequent execution path. This should be distinguished from the earlier LFI vulnerability: the documented LFI exposed configuration, while the reported backdoor provided command-execution functionality.
 
-A compromised or malicious plugin effectively becomes a server-side web shell.
+### Defensive controls
 
-Capabilities include:
-
-* Execute shell commands.
-* Read sensitive files.
-* Spawn reverse shells.
-* Modify filesystem content.
-* Download payloads.
-
-</div>
+- Compare deployed plugin files against trusted, known-good versions.
+- Investigate unauthorized changes to plugin source code.
+- Restrict who can install or modify plugins.
+- Monitor unexpected PHP execution and suspicious process creation.
+- Review administrative activity and file-integrity events.
+- Remove malicious code and restore trusted application files after investigation.
 
 ---
 
-## Blue Team Detection Opportunities
+## Phase VI — Remote Code Execution
 
-<table><table-section header><table-row header><table-cell header>Detection</table-cell><table-cell header>Security Value</table-cell></table-row></table-section><table-row><table-cell>File Integrity Monitoring</table-cell><table-cell>Detect plugin modification.</table-cell></table-row><table-row><table-cell>PHP Function Monitoring</table-cell><table-cell>Detect dangerous execution functions.</table-cell></table-row><table-row><table-cell>Unexpected Plugin Changes</table-cell><table-cell>Alert on unauthorized edits.</table-cell></table-row><table-row><table-cell>WordPress Admin Auditing</table-cell><table-cell>Monitor plugin modifications.</table-cell></table-row></table>
+The source reports that the hidden PHP functionality was used to validate operating-system command execution under the web server's security context.
 
----
-
-# ⚡ Phase VI — Remote Code Execution
-
-> *The hidden PHP functionality was validated safely before establishing interactive access.*
-
----
-
-<div class="phase-banner danger">
-
-## Remote Command Execution Validation
-
-**Objective**
-
-Confirm arbitrary operating system command execution through the vulnerable plugin.
-
-</div>
-
----
-
-## Figure 07 — Command Execution Validation
+### Figure 07 — Command Execution Validation
 
 ![Remote Code Execution](assets/img/07-rce-confirmation.svg)
 
-<div class="figure-caption">
+*Figure 07. Reported validation of operating-system command execution through the PHP backdoor.*
 
-**Figure 07.** Validation of operating system command execution through the PHP backdoor.
+### Validation commands
 
-</div>
+The original notes list the following low-impact commands:
 
----
-
-## Safe Validation Strategy
-
-Before attempting persistence or shells, the assessment executed low-risk commands.
-
-### Validation Commands
-
-```bash id="vkpt0s"
+```bash
 whoami
 id
 hostname
@@ -1549,223 +523,81 @@ pwd
 uname -a
 ```
 
----
+| Command | Purpose |
+|---|---|
+| `whoami` | Identify the effective username |
+| `id` | Display user and group identity information |
+| `hostname` | Identify the system hostname |
+| `pwd` | Display the current working directory |
+| `uname -a` | Display kernel and system information |
 
-## Execution Dashboard
+The source reports that command execution was validated as the web server user and that the Linux environment and working directory were investigated.
 
-<div class="dashboard-grid">
+The original notes do not provide the full output for these commands, so specific usernames, group IDs, kernel versions, and directory paths are not inferred.
 
-<div class="metric-card success">
+### Reported result
 
-### 👤 Execution Context
-
-Web Server User
-
+<div class="key-finding">
+  <div class="key-finding-title">Remote Command Execution</div>
+  The source reports successful operating-system command execution through
+  the discovered PHP functionality. This created the documented path from
+  web application compromise to Linux post-exploitation.
 </div>
 
-<div class="metric-card success">
+### Defensive considerations
 
-### 🐧 Linux Environment
-
-Confirmed
-
-</div>
-
-<div class="metric-card success">
-
-### 📁 Working Directory
-
-Enumerated
-
-</div>
-
-<div class="metric-card success">
-
-### ⚙️ Command Execution
-
-Validated
-
-</div>
-
-</div>
+Command execution from a web application should be treated as a high-impact incident. Investigators should review web-server process activity, unexpected child processes, filesystem access, and outbound network connections. Remediation should include removal of the execution path and rotation of potentially exposed secrets.
 
 ---
 
-## Operating System Enumeration
+## Phase VII — Interactive Shell
 
-Once execution was confirmed, environmental reconnaissance collected:
+The source reports that remote command execution was followed by an interactive reverse shell, allowing more extensive filesystem and user-context investigation.
 
-<table><table-section header><table-row header><table-cell header>Information</table-cell><table-cell header>Purpose</table-cell></table-row></table-section><table-row><table-cell>User Context</table-cell><table-cell>Privilege level.</table-cell></table-row><table-row><table-cell>Hostname</table-cell><table-cell>System identification.</table-cell></table-row><table-row><table-cell>Kernel Version</table-cell><table-cell>Privilege escalation planning.</table-cell></table-row><table-row><table-cell>Filesystem Location</table-cell><table-cell>Application layout.</table-cell></table-row><table-row><table-cell>Operating System</table-cell><table-cell>Linux distribution identification.</table-cell></table-row></table>
-
----
-
-## Why Validate RCE Carefully?
-
-<div class="info-card info">
-
-### Professional Assessment Practice
-
-A penetration test should first verify execution using non-destructive commands before launching payloads.
-
-Benefits include:
-
-* Reduced operational impact.
-* Accurate privilege verification.
-* Better reporting evidence.
-* Controlled exploitation workflow.
-
-</div>
-
----
-
-## Security Impact Matrix
-
-<div class="risk-grid">
-
-<div class="risk critical">
-
-### 🔴 Critical Impact
-
-Remote Code Execution
-
-</div>
-
-<div class="risk high">
-
-### 🟠 High Impact
-
-Filesystem Access
-
-Credential Harvesting
-
-Post Exploitation
-
-</div>
-
-</div>
-
----
-
-# 🐚 Phase VII — Interactive Reverse Shell
-
-> *Remote Code Execution was upgraded into a stable Linux shell for post-exploitation.*
-
----
-
-<div class="phase-banner">
-
-## Establishing Interactive Access
-
-**Objective**
-
-Convert isolated command execution into a fully interactive Linux terminal.
-
-</div>
-
----
-
-## Figure 08 — Reverse Shell
+### Figure 08 — Reverse Shell
 
 ![Reverse Shell](assets/img/08-reverse-shell.svg)
 
-<div class="figure-caption">
+*Figure 08. Interactive shell evidence retained from the original documentation.*
 
-**Figure 08.** Interactive reverse shell established from the compromised WordPress server.
+### Reported shell workflow
 
-</div>
-
----
-
-## Reverse Shell Workflow
-
-```text id="pndazg"
+```text
 Attacker Listener
-       ▲
-       │ TCP Connection
-       │
+       ^
+       | TCP Connection
+       |
 Target Web Server
-       │
-       ▼
+       |
+       v
 PHP Backdoor
-       │
-       ▼
+       |
+       v
 Interactive Bash Shell
 ```
 
----
+The source identifies Netcat as the listener tool and reports a stable shell session. The target address, listener port, and exact reverse-shell payload were not supplied and are not fabricated here.
 
-## Reverse Shell Dashboard
+### PTY stabilization
 
-<div class="dashboard-grid">
+The original walkthrough documents the following terminal commands:
 
-<div class="metric-card success">
-
-### 📡 Listener Ready
-
-Netcat
-
-</div>
-
-<div class="metric-card success">
-
-### 🐚 Interactive Shell
-
-Bash Session Established
-
-</div>
-
-<div class="metric-card success">
-
-### 🖥️ Linux Access
-
-TTY Available
-
-</div>
-
-<div class="metric-card success">
-
-### 🔍 Environment Enumeration
-
-Ready
-
-</div>
-
-</div>
-
----
-
-## Shell Stabilization
-
-Interactive shells require TTY improvements for usability.
-
-### PTY Upgrade
-
-```bash id="ktqagw"
+```bash
 python3 -c 'import pty; pty.spawn("/bin/bash")'
 ```
 
-### Terminal Improvements
-
-```bash id="h8q91u"
+```bash
 export TERM=xterm
 stty rows 40 columns 120
 ```
 
----
+The Python command attempts to spawn Bash through a pseudo-terminal. Setting `TERM` and terminal dimensions can improve interactive terminal behavior.
 
-## Stabilization Benefits
+### Post-exploitation enumeration
 
-<table><table-section header><table-row header><table-cell header>Improvement</table-cell><table-cell header>Benefit</table-cell></table-row></table-section><table-row><table-cell>Interactive Bash</table-cell><table-cell>Command history.</table-cell></table-row><table-row><table-cell>Arrow Keys</table-cell><table-cell>Improved usability.</table-cell></table-row><table-row><table-cell>Terminal Size</table-cell><table-cell>Interactive applications.</table-cell></table-row><table-row><table-cell>Signal Handling</table-cell><table-cell>Reliable shell behavior.</table-cell></table-row></table>
+The source lists these commands for validating the shell context:
 
----
-
-## Initial Linux Enumeration
-
-Immediately after stabilization, the assessment validated the execution context.
-
-### Enumeration Terminal
-
-```bash id="y0i8h5"
+```bash
 whoami
 id
 hostname
@@ -1773,1021 +605,333 @@ pwd
 env
 ```
 
----
+The reported post-exploitation workflow included:
 
-## Interactive Shell Findings
+- Filesystem traversal and readable-file discovery.
+- Investigation of WordPress configuration and database authentication material.
+- Review of user home directories.
+- Search for SSH authentication material.
+- Backup archive investigation.
+- Preparation for further privilege escalation.
 
-<div class="info-card success">
+### Defensive considerations
 
-### Post-Exploitation Ready
-
-The shell now supports:
-
-* Filesystem traversal.
-* Credential harvesting.
-* SSH key discovery.
-* Database analysis.
-* Privilege escalation enumeration.
-
-</div>
+Reverse-shell activity may be indicated by unexpected outbound connections, web-server processes spawning shells or scripting interpreters, and unusual process trees. Detection should combine network telemetry with endpoint and application-level logs.
 
 ---
 
-# Visual Exploitation Gallery
+## Phase VIII — Credential Harvesting
 
-<div class="gallery-grid">
+With an interactive shell available, the source describes investigating WordPress authentication records, configuration files, user home directories, and other locations containing potentially reusable authentication material.
 
-<div>
-
-![LFI](assets/img/05-lfi-wp-config-redacted.svg)
-
-**Configuration Disclosure**
-
-</div>
-
-<div>
-
-![Backdoor](assets/img/06-backdoor-source.svg)
-
-**Plugin Backdoor Analysis**
-
-</div>
-
-<div>
-
-![RCE](assets/img/07-rce-confirmation.svg)
-
-**Remote Code Execution**
-
-</div>
-
-<div>
-
-![Reverse Shell](assets/img/08-reverse-shell.svg)
-
-**Interactive Shell**
-
-</div>
-
-</div>
-
----
-
-# Exploitation Findings Dashboard
-
-<div class="risk-grid">
-
-<div class="risk critical">
-
-## 🔴 Critical Findings
-
-* Local File Inclusion
-* PHP Backdoor
-* Remote Code Execution
-
-</div>
-
-<div class="risk high">
-
-## 🟠 High Findings
-
-* Configuration Disclosure
-* Authentication Secrets
-* Interactive Shell Access
-
-</div>
-
-</div>
-
----
-
-# Blue Team Recommendations
-
-## Preventing This Attack Chain
-
-<table><table-section header><table-row header><table-cell header>Control</table-cell><table-cell header>Purpose</table-cell></table-row></table-section><table-row><table-cell>Patch Vulnerable Plugins</table-cell><table-cell>Remove LFI attack vector.</table-cell></table-row><table-row><table-cell>Disable Plugin File Editing</table-cell><table-cell>Prevent malicious PHP modifications.</table-cell></table-row><table-row><table-cell>Monitor Plugin Integrity</table-cell><table-cell>Detect unauthorized changes.</table-cell></table-row><table-row><table-cell>Restrict PHP Execution</table-cell><table-cell>Reduce RCE opportunities.</table-cell></table-row><table-row><table-cell>Outbound Network Monitoring</table-cell><table-cell>Detect reverse shells.</table-cell></table-row></table>
-
----
-
-# Phase Summary
-
-<div class="summary-card">
-
-## Initial Exploitation Complete
-
-* ✅ Local File Inclusion validated.
-* ✅ WordPress configuration disclosed.
-* ✅ Database authentication architecture identified.
-* ✅ Hidden PHP backdoor reverse engineered.
-* ✅ Remote Code Execution confirmed.
-* ✅ Interactive reverse shell established.
-* ✅ Linux post-exploitation begins.
-
-</div>
-
----
-
-<div class="next-section">
-
-## ► Next Section
-
-The assessment now enters **Credential Harvesting and Lateral Movement**, including database password hashes, SSH key discovery, backup archive analysis, historical credentials, and user pivoting.
-
-### Upcoming Figures
-
-* `09-wp-user-db-redacted.svg`
-* `10-diego-crack-redacted.svg`
-* `11-ssh-key-redacted.svg`
-* `12-backup-transfer.svg`
-* `13-backup-crack-redacted.svg`
-* `14-xavi-config-redacted.svg`
-
-</div>
-
----
-
-# 🔐 Phase VIII — Credential Harvesting
-
-> *Initial shell access is only the beginning. The next objective is to discover credentials, authentication material, and trust relationships that enable lateral movement across the Linux environment.*
-
----
-
-<div class="phase-banner success">
-
-## Post-Exploitation Intelligence Collection
-
-**Objective**
-
-Enumerate sensitive files, database credentials, password hashes, SSH keys, and historical artifacts available after compromising the WordPress server.
-
-</div>
-
----
-
-## Figure 09 — WordPress Credential Harvesting
+### Figure 09 — WordPress Database Records
 
 ![Credential Harvesting](assets/img/09-wp-user-db-redacted.svg)
 
-<div class="figure-caption">
+*Figure 09. WordPress authentication-record investigation. Password hashes are redacted.*
 
-**Figure 09.** Enumeration of WordPress authentication records. Usernames are preserved for educational context, while password hashes have been replaced with **`[REDACTED]`**.
+### Credential discovery workflow
 
+<div class="attack-chain">
+  <div class="attack-step">Interactive Shell</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">Filesystem Enumeration</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">Configuration Review</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">Database Investigation</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">Authentication Material</div>
 </div>
 
----
+### High-value locations
 
-# Post-Exploitation Workflow
+| Source | Potential security impact |
+|---|---|
+| WordPress database | Password hashes and user metadata |
+| `wp-config.php` | Database credentials and authentication-related secrets |
+| `/home/` | User accounts and potentially sensitive files |
+| `/var/www/` | Application source code and configuration |
+| `~/.ssh/` | SSH keys and related authentication configuration |
+| Backup locations | Historical configuration and credentials |
 
-<div class="exploit-flow">
+These are the locations identified in the source documentation. Their listing should not be interpreted as proof that every file was accessible or contained a secret.
 
-```text id="q8upgp"
-Interactive Shell
-        │
-        ▼
-Filesystem Enumeration
-        │
-        ▼
-WordPress Configuration Review
-        │
-        ▼
-Database Access
-        │
-        ▼
-Credential Harvesting
-        │
-        ▼
-Authentication Material Collected
-```
-
-</div>
-
----
-
-## Credential Discovery Dashboard
-
-<div class="dashboard-grid">
-
-<div class="metric-card success">
-
-### 🗄️ Database Credentials
-
-Recovered from Configuration
-
-</div>
-
-<div class="metric-card warning">
-
-### 👥 WordPress Users
-
-Enumerated
-
-</div>
-
-<div class="metric-card warning">
-
-### 🔑 Password Hashes
-
-Extracted for Offline Analysis
-
-</div>
-
-<div class="metric-card success">
-
-### 📁 Configuration Files
-
-Accessible from Web Context
-
-</div>
-
-</div>
-
----
-
-# High-Value Credential Sources
-
-<table><table-section header><table-row header><table-cell header>Source</table-cell><table-cell header>Security Impact</table-cell></table-row></table-section><table-row><table-cell>WordPress Database</table-cell><table-cell>Password hashes and user metadata.</table-cell></table-row><table-row><table-cell>`wp-config.php`</table-cell><table-cell>Database authentication material.</table-cell></table-row><table-row><table-cell>User Home Directories</table-cell><table-cell>SSH credentials and notes.</table-cell></table-row><table-row><table-cell>Application Backups</table-cell><table-cell>Historical credentials and configuration.</table-cell></table-row></table>
-
----
-
-## Filesystem Enumeration Strategy
-
-The compromised web server account was used to enumerate readable resources throughout the Linux filesystem.
-
-### Enumeration Focus
-
-<table><table-section header><table-row header><table-cell header>Directory</table-cell><table-cell header>Purpose</table-cell></table-row></table-section><table-row><table-cell>`/home/`</table-cell><table-cell>User accounts.</table-cell></table-row><table-row><table-cell>`/var/www/`</table-cell><table-cell>Application source code.</table-cell></table-row><table-row><table-cell>`~/.ssh/`</table-cell><table-cell>Authentication material.</table-cell></table-row><table-row><table-cell>Backup Locations</table-cell><table-cell>Archived application data.</table-cell></table-row></table>
-
----
-
-## Security Observation
-
-<div class="info-card warning">
-
-### Configuration Files Become Credential Stores
-
-A recurring lesson from real-world assessments is that service accounts frequently have read access to sensitive application configuration.
-
-Once configuration files become accessible, attackers often gain authentication material without exploiting additional vulnerabilities.
-
-</div>
-
----
-
-# 🔓 Phase IX — Password Recovery Methodology
-
-> *Password hashes should be analyzed offline whenever possible to reduce interaction with the target.*
-
----
-
-<div class="phase-banner">
-
-## Offline Authentication Analysis
-
-**Objective**
-
-Recover reusable authentication credentials without exposing passwords or hashes publicly.
-
-</div>
-
----
-
-## Figure 10 — Offline Password Recovery
+### Figure 10 — Offline Password Recovery
 
 ![Password Recovery](assets/img/10-diego-crack-redacted.svg)
 
-<div class="figure-caption">
+*Figure 10. Offline password-recovery evidence with password and hash values removed.*
 
-**Figure 10.** Offline password recovery workflow demonstrating methodology only. Passwords and hashes have been removed.
+The source reports extracting WordPress password hashes for offline analysis. It also describes credential recovery as part of the later SSH pivot. Actual usernames, hash strings, passwords, and recovered secret values remain redacted.
 
-</div>
+### Why credential exposure matters
+
+Credential exposure can turn an application-level compromise into an identity compromise. The impact depends on the validity, privileges, scope, and reuse of the recovered authentication material.
+
+### Defensive controls
+
+- Restrict service-account access to configuration files.
+- Use unique credentials across services and users.
+- Rotate credentials exposed during a compromise.
+- Protect database authentication records and backups.
+- Review access to home directories and SSH-related files.
+- Monitor unusual database access and file reads from web-server processes.
 
 ---
 
-## Recovery Workflow
+## Phase IX — Offline Password Analysis
 
-<div class="exploit-flow">
+The source describes offline analysis of password hashes and a password-protected archive. It names John and Hashcat as password-recovery tools.
 
-```text id="0vw7f5"
-WordPress Password Hash
-          │
-          ▼
-Offline Analysis
-          │
-          ▼
-Dictionary / Rule Testing
-          │
-          ▼
-Recovered Credential
-          │
-          ▼
-Authentication Opportunity
+### Documented methodology
+
+```text
+Password Hash or Protected Archive
+              |
+              v
+       Offline Analysis
+              |
+              v
+      Dictionary / Rule Testing
+              |
+              v
+       Credential Recovery
+              |
+              v
+   Authorized Authentication Review
 ```
 
-</div>
+Offline password analysis avoids sending repeated password guesses to a live authentication endpoint. It does not eliminate the need for authorization or safe handling of recovered secrets.
+
+### Reported outcome
+
+The source reports successful credential recovery and later authentication through SSH. The exact hash format, wordlist, tool invocation, password, and complete recovery output are not included in the supplied document and are not reconstructed.
+
+### Security lessons
+
+| Weak practice | Potential consequence |
+|---|---|
+| Weak passwords | Greater exposure to offline guessing |
+| Password reuse | Compromise of additional accounts |
+| Shared credentials | Expansion of the impact of a single leak |
+| Unprotected hash exports | Additional offline attack opportunities |
+
+### Recommended controls
+
+- Enforce strong, unique passwords.
+- Apply MFA where supported, particularly for administrative access.
+- Rotate credentials that may have been exposed.
+- Limit access to authentication databases and hash exports.
+- Use secure password-hashing configurations appropriate to the application.
 
 ---
 
-## Why Offline Recovery?
+## Phase X — SSH Lateral Movement
 
-<div class="info-card info">
+The original notes report discovering SSH authentication material and using recovered credentials to authenticate into an additional Linux user account.
 
-### Professional Assessment Practice
-
-Offline analysis provides several operational advantages:
-
-* No authentication attempts against the target.
-* No lockout risk.
-* Faster password testing.
-* Better reproducibility for reporting.
-
-</div>
-
----
-
-## Credential Recovery Dashboard
-
-<div class="dashboard-grid">
-
-<div class="metric-card success">
-
-### 🔑 Hashes Extracted
-
-Offline Analysis Ready
-
-</div>
-
-<div class="metric-card success">
-
-### 👤 User Account Recovered
-
-Credential Reuse Opportunity
-
-</div>
-
-<div class="metric-card warning">
-
-### 🔒 Sensitive Values
-
-**[REDACTED]**
-
-</div>
-
-<div class="metric-card warning">
-
-### 📚 Methodology Only
-
-No Passwords Published
-
-</div>
-
-</div>
-
----
-
-## Security Lessons
-
-<table><table-section header><table-row header><table-cell header>Weak Practice</table-cell><table-cell header>Risk</table-cell></table-row></table-section><table-row><table-cell>Password Reuse</table-cell><table-cell>Lateral movement.</table-cell></table-row><table-row><table-cell>Weak Password Policy</table-cell><table-cell>Offline recovery succeeds.</table-cell></table-row><table-row><table-cell>Shared Credentials</table-cell><table-cell>Multiple services compromised.</table-cell></table-row></table>
-
----
-
-## Blue Team Recommendations
-
-* Enforce strong passwords.
-* Require MFA for administrators.
-* Rotate compromised credentials.
-* Monitor unusual database access.
-* Audit password reuse.
-
----
-
-# 🔑 Phase X — SSH Lateral Movement
-
-> *Recovered authentication material enables movement beyond the compromised web server process.*
-
----
-
-<div class="phase-banner success">
-
-## Pivoting Between Linux Users
-
-**Objective**
-
-Authenticate into additional Linux accounts using legitimately recovered credentials.
-
-</div>
-
----
-
-## Figure 11 — SSH Key Discovery
+### Figure 11 — SSH Key Discovery
 
 ![SSH Key Discovery](assets/img/11-ssh-key-redacted.svg)
 
-<div class="figure-caption">
+*Figure 11. SSH authentication material discovery. Private-key contents remain redacted.*
 
-**Figure 11.** Discovery of SSH authentication material. Private key contents have been replaced with **`[REDACTED]`**.
+### Documented progression
 
+<div class="attack-chain">
+  <div class="attack-step">User Home Discovery</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">SSH Material Review</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">Permission Review</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">SSH Authentication</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">Additional User Shell</div>
 </div>
+
+### SSH artifacts reviewed
+
+| Artifact | Security relevance |
+|---|---|
+| `id_rsa` | Private-key authentication material |
+| `authorized_keys` | Public keys authorized for account access |
+| `known_hosts` | Records of previously encountered SSH hosts |
+| `config` | SSH client configuration and connection settings |
+
+The source reports a successful SSH pivot and a stable user shell. It intentionally redacts the private key and does not provide the exact SSH command, target address, or authentication values.
+
+### Security significance
+
+SSH keys should be protected as credentials. A private key that becomes readable to an unintended account may permit authentication without a password, depending on the key's validity, restrictions, and server configuration.
+
+### Defensive controls
+
+- Apply strict ownership and permissions to SSH directories and keys.
+- Use passphrases and managed keys where appropriate.
+- Rotate or revoke exposed keys.
+- Monitor successful SSH logins and unusual source addresses.
+- Investigate attempts by web-server accounts to read users' SSH directories.
+- Avoid sharing private keys across accounts or systems.
 
 ---
 
-## Lateral Movement Timeline
+## Phase XI — Backup Analysis
 
-<div class="timeline">
+The source describes locating a password-protected backup archive and analyzing its contents to recover historical configuration and authentication information.
 
-<div class="timeline-item">
-
-### Step 01
-
-Discover User Home Directory
-
-</div>
-
-<div class="timeline-item">
-
-### Step 02
-
-Identify SSH Authentication Material
-
-</div>
-
-<div class="timeline-item">
-
-### Step 03
-
-Validate File Permissions
-
-</div>
-
-<div class="timeline-item">
-
-### Step 04
-
-Authenticate Through SSH
-
-</div>
-
-<div class="timeline-item">
-
-### Step 05
-
-Gain Stable User Shell
-
-</div>
-
-</div>
-
----
-
-## SSH Enumeration Dashboard
-
-<div class="dashboard-grid">
-
-<div class="metric-card success">
-
-### 📂 `.ssh/`
-
-Authentication Directory
-
-</div>
-
-<div class="metric-card warning">
-
-### 🔑 Private Key
-
-Recovered
-
-**[REDACTED]**
-
-</div>
-
-<div class="metric-card success">
-
-### 👤 SSH User
-
-Pivot Successful
-
-</div>
-
-<div class="metric-card success">
-
-### 💻 Stable Shell
-
-Interactive SSH Session
-
-</div>
-
-</div>
-
----
-
-## Authentication Material Reviewed
-
-<table><table-section header><table-row header><table-cell header>Artifact</table-cell><table-cell header>Purpose</table-cell></table-row></table-section><table-row><table-cell>`id_rsa`</table-cell><table-cell>Private authentication key.</table-cell></table-row><table-row><table-cell>`authorized_keys`</table-cell><table-cell>Allowed authentication keys.</table-cell></table-row><table-row><table-cell>`known_hosts`</table-cell><table-cell>Historical SSH connections.</table-cell></table-row><table-row><table-cell>`config`</table-cell><table-cell>SSH configuration.</table-cell></table-row></table>
-
----
-
-## Security Observation
-
-<div class="info-card warning">
-
-### SSH Keys Are Credentials
-
-SSH private keys should be treated with the same sensitivity as passwords.
-
-Improper filesystem permissions allow attackers to authenticate without guessing credentials.
-
-</div>
-
----
-
-## Detection Opportunities
-
-<table><table-section header><table-row header><table-cell header>Event</table-cell><table-cell header>Detection Strategy</table-cell></table-row></table-section><table-row><table-cell>New SSH Session</table-cell><table-cell>Authentication logs.</table-cell></table-row><table-row><table-cell>Unexpected SSH Key Usage</table-cell><table-cell>Key fingerprint monitoring.</table-cell></table-row><table-row><table-cell>Web Server User Reading `.ssh`</table-cell><table-cell>File integrity monitoring.</table-cell></table-row></table>
-
----
-
-# 📦 Phase XI — Backup Archive Analysis
-
-> *Historical backups frequently preserve secrets long after production systems have changed.*
-
----
-
-<div class="phase-banner warning">
-
-## Historical Artifact Investigation
-
-**Objective**
-
-Analyze archived WordPress backups for historical credentials, configuration files, and authentication artifacts.
-
-</div>
-
----
-
-## Figure 12 — Backup Archive Discovery
+### Figure 12 — Backup Discovery
 
 ![Backup Discovery](assets/img/12-backup-transfer.svg)
 
-<div class="figure-caption">
+*Figure 12. Backup archive discovery and handling, as represented in the original evidence.*
 
-**Figure 12.** Discovery of a password-protected backup archive during filesystem enumeration.
+### Why backup files are important
 
-</div>
+Backups may preserve information that is no longer required by the current application, including:
 
----
+- Historical application configuration.
+- Database exports.
+- Old credentials and environment settings.
+- Archived source code.
+- Authentication material.
 
-## Why Backups Matter
+### Reported archive workflow
 
-Backups often contain:
-
-* Old credentials.
-* Configuration files.
-* Environment variables.
-* Database exports.
-* Archived application code.
-
----
-
-## Backup Enumeration Dashboard
-
-<div class="dashboard-grid">
-
-<div class="metric-card success">
-
-### 📦 Backup Archive
-
-Identified
-
-</div>
-
-<div class="metric-card warning">
-
-### 🔒 Password Protected
-
-Offline Analysis Required
-
-</div>
-
-<div class="metric-card success">
-
-### 📁 Historical Configuration
-
-Recovered
-
-</div>
-
-<div class="metric-card warning">
-
-### 🗄️ Archived Secrets
-
-Present
-
-</div>
-
-</div>
-
----
-
-## Archive Analysis Workflow
-
-```text id="2okdw8"
+```text
 Filesystem Enumeration
-        │
-        ▼
-Backup Archive Located
-        │
-        ▼
-Archive Inspection
-        │
-        ▼
-Offline Password Recovery
-        │
-        ▼
-Historical Files Extracted
+          |
+          v
+   Backup Archive Located
+          |
+          v
+     Archive Inspection
+          |
+          v
+  Offline Password Analysis
+          |
+          v
+  Historical Files Reviewed
 ```
 
----
+The original source lists `zipinfo` and `unzip` for archive inspection and extraction.
 
-## Figure 13 — Archive Password Recovery
+### Figure 13 — Archive Password Recovery
 
 ![Archive Password Recovery](assets/img/13-backup-crack-redacted.svg)
 
-<div class="figure-caption">
+*Figure 13. Offline analysis of archive access credentials. Password values remain redacted.*
 
-**Figure 13.** Offline recovery of archive access credentials. Password values have been removed.
+### Reported outcome
 
-</div>
+The source reports that archive analysis recovered historical configuration and additional authentication information. Exact filenames, archive commands, password values, and recovered contents are not supplied in full and are not reconstructed.
 
----
+### Security significance
 
-## Security Impact
+A backup can remain a credential repository even after a production password or configuration has changed. If archived credentials are still valid, their exposure can enable further access.
 
-<div class="info-card danger">
+### Defensive controls
 
-### Historical Secrets Expand the Attack Surface
-
-Archived credentials frequently remain valid.
-
-Backups therefore become:
-
-* Credential repositories.
-* Configuration repositories.
-* Historical attack intelligence.
-
-</div>
+- Encrypt sensitive backups and protect their keys separately.
+- Restrict backup storage permissions.
+- Remove secrets that are not needed in archived copies.
+- Apply retention and secure deletion policies.
+- Audit access to backup archives.
+- Rotate credentials when a backup containing secrets is exposed.
 
 ---
 
-# 👥 Phase XII — Additional User Discovery
+## Phase XII — Additional User Discovery
 
-> *Recovered historical configuration revealed additional trust relationships within the Linux environment.*
+The original notes describe examining historical configuration and recovering additional user-related authentication information.
 
----
-
-<div class="phase-banner">
-
-## Historical Credential Discovery
-
-**Objective**
-
-Review extracted configuration for additional users, authentication paths, and privilege relationships.
-
-</div>
-
----
-
-## Figure 14 — Additional Credential Discovery
+### Figure 14 — Historical Configuration
 
 ![Historical Credentials](assets/img/14-xavi-config-redacted.svg)
 
-<div class="figure-caption">
+*Figure 14. Historical configuration review. Sensitive values remain redacted.*
 
-**Figure 14.** Historical configuration analysis revealing additional authentication information while removing all sensitive values.
+### Reported investigation areas
 
+| Discovery area | Assessment relevance |
+|---|---|
+| User home directories | Identify accounts and file-access boundaries |
+| Historical configuration | Investigate potentially reusable authentication material |
+| SSH-related files | Review authentication relationships |
+| Archive metadata | Understand the origin and contents of historical artifacts |
+
+The source reports discovery of an additional Linux user and successful expansion of user access through credential reuse and SSH authentication. The underlying credentials and exact user-to-user transition are not reproduced.
+
+### Documented trust progression
+
+<div class="attack-chain">
+  <div class="attack-step">WordPress Access</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">Credential Discovery</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">SSH Authentication</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">Backup Review</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">Additional User Context</div>
 </div>
+
+This phase is relevant because access to a single web application may expose authentication material belonging to other users or services. Each transition must be assessed in terms of the specific credential, its permissions, and its intended scope.
 
 ---
 
-## User Pivot Dashboard
+## Phase XIII — Privilege Escalation
 
-<div class="dashboard-grid">
+The final phase describes local privilege enumeration and the reported abuse of excessive sudo permissions to obtain root access.
 
-<div class="metric-card success">
-
-### 👥 Additional Linux User
-
-Discovered
-
-</div>
-
-<div class="metric-card success">
-
-### 🔑 Historical Credentials
-
-Recovered
-
-</div>
-
-<div class="metric-card warning">
-
-### 🗂️ Legacy Configuration
-
-Exposed
-
-</div>
-
-<div class="metric-card success">
-
-### 🔄 Lateral Movement
-
-Expanded User Access
-
-</div>
-
-</div>
-
----
-
-## Trust Relationship Analysis
-
-<table><table-section header><table-row header><table-cell header>Discovery</table-cell><table-cell header>Security Value</table-cell></table-row></table-section><table-row><table-cell>User Home Directories</table-cell><table-cell>Privilege mapping.</table-cell></table-row><table-row><table-cell>Historical Configuration</table-cell><table-cell>Authentication reuse.</table-cell></table-row><table-row><table-cell>SSH Material</table-cell><table-cell>User pivoting.</table-cell></table-row><table-row><table-cell>Archive Metadata</table-cell><table-cell>Account relationships.</table-cell></table-row></table>
-
----
-
-## Credential Reuse Chain
-
-<div class="exploit-flow">
-
-```text id="hxp5sd"
-WordPress Credentials
-        │
-        ▼
-Linux User Authentication
-        │
-        ▼
-SSH Access
-        │
-        ▼
-Historical Backup
-        │
-        ▼
-Additional Credentials
-        │
-        ▼
-Privilege Escalation Candidate
-```
-
-</div>
-
----
-
-# Visual Gallery — Post Exploitation
-
-<div class="gallery-grid">
-
-<div>
-
-![Database](assets/img/09-wp-user-db-redacted.svg)
-
-**Database Enumeration**
-
-</div>
-
-<div>
-
-![Hashes](assets/img/10-diego-crack-redacted.svg)
-
-**Password Recovery Workflow**
-
-</div>
-
-<div>
-
-![SSH](assets/img/11-ssh-key-redacted.svg)
-
-**SSH Authentication Material**
-
-</div>
-
-<div>
-
-![Backup](assets/img/12-backup-transfer.svg)
-
-**Backup Discovery**
-
-</div>
-
-<div>
-
-![Archive Recovery](assets/img/13-backup-crack-redacted.svg)
-
-**Archive Password Recovery**
-
-</div>
-
-<div>
-
-![Historical Credentials](assets/img/14-xavi-config-redacted.svg)
-
-**Historical Configuration Review**
-
-</div>
-
-</div>
-
----
-
-# Credential Harvesting Findings
-
-<div class="risk-grid">
-
-<div class="risk critical">
-
-## 🔴 Critical
-
-Database Authentication Material
-
-SSH Credentials
-
-Credential Reuse
-
-</div>
-
-<div class="risk high">
-
-## 🟠 High
-
-Password Hash Exposure
-
-Backup Secrets
-
-Historical Configuration
-
-</div>
-
-</div>
-
----
-
-# Blue Team Recommendations
-
-## Identity Security
-
-<table><table-section header><table-row header><table-cell header>Recommendation</table-cell><table-cell header>Purpose</table-cell></table-row></table-section><table-row><table-cell>Unique Passwords</table-cell><table-cell>Prevent credential reuse.</table-cell></table-row><table-row><table-cell>MFA for Administrators</table-cell><table-cell>Protect WordPress administration.</table-cell></table-row><table-row><table-cell>Rotate SSH Keys</table-cell><table-cell>Invalidate exposed authentication material.</table-cell></table-row><table-row><table-cell>Protect Home Directory Permissions</table-cell><table-cell>Prevent SSH key disclosure.</table-cell></table-row><table-row><table-cell>Audit Backup Storage</table-cell><table-cell>Remove archived secrets.</table-cell></table-row></table>
-
----
-
-# Phase Summary
-
-<div class="summary-card">
-
-## Credential Harvesting Completed
-
-* ✅ Database credentials analyzed.
-* ✅ Password hashes recovered.
-* ✅ Offline recovery methodology demonstrated.
-* ✅ SSH authentication material discovered.
-* ✅ User pivot completed through SSH.
-* ✅ Backup archive analyzed.
-* ✅ Historical credentials recovered.
-* ✅ Privilege escalation path prepared.
-
-</div>
-
----
-
----
-
-# 👑 Phase XIII — Linux Privilege Escalation
-
-> *The final objective of the engagement was to escalate from an authenticated Linux user to unrestricted administrative control of the operating system.*
-
----
-
-<div class="phase-banner danger">
-
-## Root Compromise
-
-**Objective**
-
-Identify local privilege escalation opportunities through sudo configuration and obtain full administrative access.
-
-</div>
-
----
-
-## Figure 15 — Root Privilege Escalation
+### Figure 15 — Privilege Escalation
 
 ![Privilege Escalation](assets/img/15-privilege-escalation.svg)
 
-<div class="figure-caption">
+*Figure 15. Root privilege escalation evidence. Sensitive terminal output has been removed.*
 
-**Figure 15.** Successful privilege escalation to the root account after reviewing local privilege delegation. Sensitive terminal output has been removed.
+### Documented escalation flow
 
+<div class="attack-chain">
+  <div class="attack-step">Authenticated Linux User</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">Local Enumeration</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">sudo Review</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">Excessive Privilege</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">Privileged Execution</div>
+  <div class="attack-arrow">→</div>
+  <div class="attack-step">Root</div>
 </div>
 
----
+### Enumeration areas
 
-# Privilege Escalation Kill Chain
+| Area | Purpose |
+|---|---|
+| sudo permissions | Identify commands a user may execute with elevated privileges |
+| SUID binaries | Identify programs with special user-ID execution behavior |
+| Linux capabilities | Review granular process privileges |
+| User groups | Identify inherited access and permissions |
+| Writable files | Investigate potential paths to privileged execution |
 
-<div class="exploit-flow">
+These are the enumeration categories listed in the original notes. The exact sudo rule, privileged binary, and exploitation command are not provided in the source material, so they are not inferred.
 
-```text
-Interactive Linux User
-         │
-         ▼
- Local Enumeration
-         │
-         ▼
- sudo Permission Review
-         │
-         ▼
- Excessive Privileges Identified
-         │
-         ▼
- Privileged Binary Execution
-         │
-         ▼
- ROOT SHELL
-```
+### Reported result
 
+<div class="key-finding">
+  <div class="key-finding-title">Root Access Reported</div>
+  The source attributes final privilege escalation to excessive sudo
+  permissions and reports successful root access. The precise misconfiguration
+  and privileged execution path require the original terminal evidence for
+  independent verification.
 </div>
 
----
+### Root verification commands
 
-## Privilege Enumeration Dashboard
-
-<div class="dashboard-grid">
-
-<div class="metric-card success">
-
-### 👤 Current User
-
-Authenticated Linux User
-
-</div>
-
-<div class="metric-card warning">
-
-### ⚙️ sudo Permissions
-
-Enumerated
-
-</div>
-
-<div class="metric-card danger">
-
-### 👑 Privileged Binary
-
-Abusable
-
-</div>
-
-<div class="metric-card danger">
-
-### 🔓 Root Access
-
-Achieved
-
-</div>
-
-</div>
-
----
-
-## Local Enumeration Strategy
-
-Before escalation, the assessment reviewed common privilege escalation vectors.
-
-<table><table-section header><table-row header><table-cell header>Enumeration Area</table-cell><table-cell header>Purpose</table-cell></table-row></table-section><table-row><table-cell>sudo Privileges</table-cell><table-cell>Identify delegated administrative permissions.</table-cell></table-row><table-row><table-cell>SUID Binaries</table-cell><table-cell>Privilege escalation opportunities.</table-cell></table-row><table-row><table-cell>Linux Capabilities</table-cell><table-cell>Additional execution privileges.</table-cell></table-row><table-row><table-cell>User Groups</table-cell><table-cell>Privilege inheritance.</table-cell></table-row><table-row><table-cell>Writable Files</table-cell><table-cell>Potential privilege abuse.</table-cell></table-row></table>
-
----
-
-## Excessive sudo Permissions
-
-<div class="info-card danger">
-
-### Critical Misconfiguration
-
-The compromised account possessed **excessive sudo privileges** that violated the Principle of Least Privilege.
-
-This allowed privileged execution without requiring exploitation of the Linux kernel.
-
-</div>
-
----
-
-## Security Impact
-
-<table><table-section header><table-row header><table-cell header>Capability After Escalation</table-cell><table-cell header>Impact</table-cell></table-row></table-section><table-row><table-cell>Read Protected Files</table-cell><table-cell>Full filesystem disclosure.</table-cell></table-row><table-row><table-cell>Modify System Configuration</table-cell><table-cell>Complete persistence capability.</table-cell></table-row><table-row><table-cell>Create Administrative Users</table-cell><table-cell>Privilege persistence.</table-cell></table-row><table-row><table-cell>Access SSH Configuration</table-cell><table-cell>Credential compromise.</table-cell></table-row><table-row><table-cell>Control Running Services</table-cell><table-cell>System-wide compromise.</table-cell></table-row></table>
-
----
-
-## Root Verification
-
-<div class="terminal-card">
-
-### Verification
+The original walkthrough lists:
 
 ```bash
 whoami
@@ -2795,815 +939,302 @@ id
 hostnamectl
 ```
 
+The reported verification output includes:
+
 ```text
 root
 uid=0(root)
 ```
 
+The excerpt does not include the full output of `id` or `hostnamectl`. No additional identifiers or system details are inferred.
+
+### Security impact
+
+Root-level access can permit broad access to protected files, system configuration, service controls, account management, and other administrative functions. The exact capabilities depend on the host and its configuration.
+
+### Defensive controls
+
+- Review sudoers rules for excessive permissions.
+- Apply the Principle of Least Privilege.
+- Restrict privileged commands to the minimum required set.
+- Audit changes to sudoers files and privileged executables.
+- Review SUID permissions and Linux capabilities.
+- Monitor privileged command execution and unexpected changes to system configuration.
+
+---
+
+## Consolidated Findings
+
+The following table consolidates the findings explicitly described in the original notes. Severity labels are preserved only where the source provides them, and no CVSS scores or vulnerability identifiers have been added.
+
+| ID | Finding | Source-reported severity | Documented impact |
+|---|---|---|---|
+| F-01 | Local File Inclusion in `jsmol2wp` | High in the detailed finding | Local file disclosure and access to WordPress configuration |
+| F-02 | WordPress configuration disclosure | High | Exposure of database credentials and authentication-related secrets |
+| F-03 | Hidden PHP backdoor in Hello Dolly | Critical in the detailed finding | Unexpected server-side execution functionality |
+| F-04 | Remote code execution | Critical in the detailed finding | Operating-system commands executed in the web-server context |
+| F-05 | Credential and password-hash exposure | High in the source risk summaries | Offline password analysis and potential credential reuse |
+| F-06 | SSH authentication-material exposure | High in the source risk summaries | Potential unauthorized user authentication |
+| F-07 | Backup archive credential disclosure | High in the source risk summaries | Exposure of historical configuration and authentication material |
+| F-08 | Excessive sudo permissions | Critical in the source risk summaries | Reported escalation to root |
+
+The source also discusses user enumeration, WordPress version and plugin metadata, and XML-RPC availability as additional observations. These are not assigned independent severity ratings here.
+
+### Finding prioritization
+
+<div class="ctf-card-grid">
+  <div class="ctf-card">
+    <div class="ctf-card-title">Priority 1 — Execution</div>
+    <div class="ctf-card-value">Remove the backdoor, eliminate the vulnerable execution path, and investigate the host for compromise.</div>
+  </div>
+  <div class="ctf-card">
+    <div class="ctf-card-title">Priority 2 — Secrets</div>
+    <div class="ctf-card-value">Rotate exposed credentials, revoke affected SSH keys, and secure database and backup access.</div>
+  </div>
+  <div class="ctf-card">
+    <div class="ctf-card-title">Priority 3 — Privileges</div>
+    <div class="ctf-card-value">Correct excessive sudo permissions and audit privileged execution.</div>
+  </div>
+</div>
+
+These priorities are remediation recommendations derived from the documented attack chain, not a formal CVSS-based risk calculation.
+
+---
+
+## MITRE ATT&CK Context
+
+The original documentation names several ATT&CK tactics and techniques but does not supply technique IDs or supporting raw evidence for every mapping. The table below therefore describes the reported activity without inventing technique identifiers or claiming a fully validated mapping.
+
+| Tactic or activity | Reported behavior | Evidence limitation |
+|---|---|---|
+| Reconnaissance | Network and service discovery | Nmap command is documented; raw output is incomplete |
+| Initial Access | Exploitation of a public-facing WordPress application | LFI is reported; the exact HTTP request is absent |
+| Execution | Operating-system command execution through PHP | Command-execution validation is reported |
+| Credential Access | Configuration, database, and SSH material discovery | Sensitive values are redacted |
+| Discovery | Filesystem and user enumeration | Enumeration workflow is described |
+| Lateral Movement | SSH authentication into another Linux user context | Exact authentication command and identities are withheld |
+| Privilege Escalation | Abuse of excessive sudo permissions | Exact sudo rule and privileged binary are not supplied |
+| Impact | Reported root access | Verification excerpt contains `root` and `uid=0(root)` |
+
+The original notes also mention server-side scripts, archive collection, and persistence-related implications. Those implications should not be treated as proof that persistence was established or that every listed ATT&CK technique was independently demonstrated.
+
+---
+
+## Defensive Recommendations
+
+The remediation plan below is tied to the reported weaknesses and their place in the attack chain.
+
+### WordPress and plugin security
+
+| Finding | Recommended control |
+|---|---|
+| Vulnerable `jsmol2wp` plugin | Patch or remove the affected plugin; validate file paths and restrict local file access |
+| Hidden PHP backdoor | Compare plugin files with trusted versions, remove unauthorized code, and investigate the host |
+| WordPress configuration exposure | Restrict access to configuration files and rotate exposed secrets |
+| User enumeration | Review whether public user discovery is necessary and apply appropriate access controls |
+| XML-RPC availability | Disable or restrict XML-RPC if the deployment does not require it |
+
+### Credential and backup security
+
+| Finding | Recommended control |
+|---|---|
+| Database credential exposure | Rotate credentials and restrict database access to required services |
+| Password-hash exposure | Protect authentication stores and use appropriate password-hashing configurations |
+| SSH key exposure | Revoke or rotate affected keys and correct filesystem permissions |
+| Credential reuse | Enforce unique credentials and use MFA where supported |
+| Backup secrets | Restrict and encrypt archives, remove unnecessary secrets, and enforce retention policies |
+
+### Linux privilege management
+
+| Finding | Recommended control |
+|---|---|
+| Excessive sudo permissions | Remove unnecessary rules and enforce least privilege |
+| Privileged binary abuse | Audit sudo rules, SUID binaries, and Linux capabilities |
+| Web-server command execution | Investigate process creation, filesystem access, and outbound connections |
+| Root-level compromise | Investigate system integrity, unauthorized accounts, scheduled tasks, services, and authentication changes |
+
+### Monitoring and detection
+
+| Detection area | Suggested monitoring |
+|---|---|
+| Plugin integrity | Detect unauthorized changes to PHP files and plugin directories |
+| PHP execution | Investigate web-server processes spawning shells or unusual child processes |
+| File inclusion | Alert on suspicious traversal patterns and unexpected access to configuration files |
+| SSH authentication | Review login events, key usage, and anomalous sessions |
+| sudo activity | Audit privileged command execution and sudoers changes |
+| Backup access | Monitor unusual reads, extraction activity, and access by service accounts |
+| Credential exposure | Rotate affected secrets and investigate their subsequent use |
+
+### Remediation roadmap
+
+<div class="ctf-card-grid">
+  <div class="ctf-card">
+    <div class="ctf-card-title">Immediate</div>
+    <div class="ctf-card-value">Remove malicious code, patch vulnerable components, investigate compromise, and rotate exposed credentials.</div>
+  </div>
+  <div class="ctf-card">
+    <div class="ctf-card-title">Short Term</div>
+    <div class="ctf-card-value">Correct filesystem permissions, secure backups, review SSH access, and reduce excessive sudo permissions.</div>
+  </div>
+  <div class="ctf-card">
+    <div class="ctf-card-title">Ongoing</div>
+    <div class="ctf-card-value">Maintain plugin integrity monitoring, centralized logging, vulnerability management, and secret-management practices.</div>
+  </div>
 </div>
 
 ---
 
-## Attack Chain Completed
+## Evidence Gallery
 
-<div class="summary-card">
+The original SVG image paths are preserved relative to `docs/index.md`.
 
-### Complete Compromise Achieved
+### Reconnaissance and enumeration
 
-* Initial Access
-* WordPress Enumeration
-* LFI Exploitation
-* Configuration Disclosure
-* Remote Code Execution
-* Reverse Shell
-* Credential Harvesting
-* SSH Pivot
-* Backup Analysis
-* Root Privilege Escalation
+![Cover](assets/img/01-cover-hero.svg)
 
-</div>
+*Figure 01. Original cover illustration.*
 
----
+![Network Reconnaissance](assets/img/02-network-recon.svg)
 
-# 📊 Executive Findings Dashboard
+*Figure 02. Network reconnaissance.*
 
-## Security Findings Overview
+![Web Enumeration](assets/img/03-web-enumeration.svg)
 
-<div class="findings-grid">
+*Figure 03. Web directory enumeration.*
 
-<div class="finding critical">
+![Plugin Enumeration](assets/img/04-plugin-enumeration.svg)
 
-### 🔴 F-01
+*Figure 04. WordPress plugin enumeration.*
 
-Local File Inclusion
-
-**High Severity**
-
-WordPress plugin allowed arbitrary file disclosure.
-
-</div>
-
-<div class="finding critical">
-
-### 🔴 F-02
-
-Configuration Disclosure
-
-**High Severity**
-
-Sensitive WordPress configuration exposed.
-
-</div>
-
-<div class="finding critical">
-
-### 🔴 F-03
-
-Hidden PHP Backdoor
-
-**Critical Severity**
-
-Server-side command execution functionality discovered.
-
-</div>
-
-<div class="finding critical">
-
-### 🔴 F-04
-
-Remote Code Execution
-
-**Critical Severity**
-
-Operating system commands executed remotely.
-
-</div>
-
-<div class="finding high">
-
-### 🟠 F-05
-
-Credential Harvesting
-
-Password hashes and authentication material recovered.
-
-</div>
-
-<div class="finding high">
-
-### 🟠 F-06
-
-SSH Key Exposure
-
-Authentication material accessible from filesystem.
-
-</div>
-
-<div class="finding high">
-
-### 🟠 F-07
-
-Backup Credential Disclosure
-
-Historical backup exposed sensitive configuration.
-
-</div>
-
-<div class="finding critical">
-
-### 🔴 F-08
-
-Privilege Escalation
-
-Misconfigured sudo permissions resulted in root access.
-
-</div>
-
-</div>
-
----
-
-# CVSS-Style Risk Summary
-
-| Finding                  | Severity    | Business Impact                   |
-| ------------------------ | ----------- | --------------------------------- |
-| Local File Inclusion     | 🔴 High     | Sensitive file disclosure.        |
-| Configuration Disclosure | 🔴 High     | Database credential compromise.   |
-| Hidden PHP Backdoor      | 🔴 Critical | Arbitrary command execution.      |
-| Remote Code Execution    | 🔴 Critical | Operating system compromise.      |
-| Password Hash Exposure   | 🟠 High     | Offline password recovery.        |
-| SSH Key Exposure         | 🟠 High     | User authentication compromise.   |
-| Backup Archive Secrets   | 🟠 High     | Historical credential disclosure. |
-| sudo Misconfiguration    | 🔴 Critical | Full administrative compromise.   |
-
----
-
-# MITRE ATT&CK Coverage
-
-<div class="mitre-section">
-
-## ATT&CK Matrix
-
-| Tactic               | Technique Demonstrated               |
-| -------------------- | ------------------------------------ |
-| Reconnaissance       | Active Scanning                      |
-| Initial Access       | Exploit Public-Facing Application    |
-| Execution            | Command and Scripting Interpreter    |
-| Persistence          | Server-Side Script                   |
-| Credential Access    | Credentials from Configuration Files |
-| Discovery            | File and Directory Discovery         |
-| Lateral Movement     | SSH                                  |
-| Collection           | Archive Collected Data               |
-| Privilege Escalation | Abuse Elevation Control Mechanism    |
-| Impact               | Full System Compromise               |
-
-</div>
-
----
-
-## ATT&CK Attack Timeline
-
-<div class="timeline">
-
-<div class="timeline-item">
-
-### Reconnaissance
-
-Service Discovery
-
-Technology Fingerprinting
-
-</div>
-
-<div class="timeline-item">
-
-### Initial Access
-
-Local File Inclusion
-
-</div>
-
-<div class="timeline-item">
-
-### Execution
-
-Remote Command Execution
-
-</div>
-
-<div class="timeline-item">
-
-### Credential Access
-
-Database & SSH Material
-
-</div>
-
-<div class="timeline-item">
-
-### Discovery
-
-Filesystem Enumeration
-
-</div>
-
-<div class="timeline-item">
-
-### Lateral Movement
-
-SSH Authentication
-
-</div>
-
-<div class="timeline-item">
-
-### Privilege Escalation
-
-sudo Misconfiguration
-
-</div>
-
-<div class="timeline-item">
-
-### Impact
-
-Root Access
-
-</div>
-
-</div>
-
----
-
-# 🛡️ Blue Team Recommendations
-
-## WordPress Hardening
-
-<div class="recommendation-grid">
-
-<div class="recommendation">
-
-### 🔒 Plugin Security
-
-* Remove unused plugins.
-* Patch vulnerable plugins immediately.
-* Enable plugin integrity monitoring.
-* Disable plugin editor in production.
-
-</div>
-
-<div class="recommendation">
-
-### 📂 Configuration Protection
-
-* Restrict access to `wp-config.php`.
-* Prevent directory traversal.
-* Limit filesystem permissions.
-* Store secrets securely.
-
-</div>
-
-</div>
-
----
-
-## Linux Hardening
-
-<div class="recommendation-grid">
-
-<div class="recommendation">
-
-### 👤 Identity Security
-
-* Rotate compromised passwords.
-* Enforce unique credentials.
-* Enable MFA for administrators.
-* Protect SSH keys.
-
-</div>
-
-<div class="recommendation">
-
-### ⚙️ Privilege Management
-
-* Review sudoers configuration.
-* Remove unnecessary sudo rights.
-* Audit privileged binaries.
-* Apply Principle of Least Privilege.
-
-</div>
-
-</div>
-
----
-
-## Monitoring Recommendations
-
-| Detection Area         | Monitoring Strategy                |
-| ---------------------- | ---------------------------------- |
-| Plugin Integrity       | File Integrity Monitoring          |
-| PHP Execution          | Monitor dangerous PHP functions    |
-| Reverse Shell Activity | Outbound network monitoring        |
-| SSH Authentication     | Login anomaly detection            |
-| sudo Usage             | Audit privileged command execution |
-| Backup Access          | Monitor archive reads              |
-
----
-
-# Security Improvement Roadmap
-
-<div class="roadmap-grid">
-
-<div class="roadmap-card">
-
-### Immediate Actions
-
-* Patch vulnerable plugin.
-* Remove malicious plugin code.
-* Rotate exposed credentials.
-* Review backup permissions.
-
-</div>
-
-<div class="roadmap-card">
-
-### Short-Term Hardening
-
-* Restrict XML-RPC if unnecessary.
-* Enable WordPress MFA.
-* Harden filesystem permissions.
-* Remove archived secrets.
-
-</div>
-
-<div class="roadmap-card">
-
-### Long-Term Improvements
-
-* Continuous vulnerability scanning.
-* Configuration management.
-* Secret management platform.
-* Centralized logging and SIEM.
-
-</div>
-
-</div>
-
----
-
-# Skills Demonstrated
-
-## Offensive Security
-
-<div class="skills-grid">
-
-<div class="skill-box">
-
-### 🌐 Reconnaissance
-
-Nmap
-
-Service Enumeration
-
-</div>
-
-<div class="skill-box">
-
-### 🕸️ Web Security
-
-Gobuster
-
-WPScan
-
-WordPress Enumeration
-
-</div>
-
-<div class="skill-box">
-
-### 💥 Exploitation
-
-Local File Inclusion
-
-Remote Code Execution
-
-PHP Analysis
-
-</div>
-
-<div class="skill-box">
-
-### 🐚 Linux
-
-Reverse Shell
-
-TTY Stabilization
-
-Post Exploitation
-
-</div>
-
-<div class="skill-box">
-
-### 🔐 Credential Access
-
-Database Enumeration
-
-SSH Keys
-
-Offline Password Recovery
-
-</div>
-
-<div class="skill-box">
-
-### 👑 Privilege Escalation
-
-sudo Enumeration
-
-Linux PrivEsc
-
-Root Verification
-
-</div>
-
-</div>
-
----
-
-## Defensive Security
-
-<div class="skills-grid">
-
-<div class="skill-box">
-
-### 🛡️ WordPress Hardening
-
-Plugin Security
-
-Configuration Protection
-
-</div>
-
-<div class="skill-box">
-
-### 🔍 Detection Engineering
-
-Reverse Shell Detection
-
-Plugin Monitoring
-
-SSH Monitoring
-
-</div>
-
-<div class="skill-box">
-
-### 📊 Threat Mapping
-
-MITRE ATT&CK
-
-OWASP Awareness
-
-</div>
-
-<div class="skill-box">
-
-### 📑 Security Reporting
-
-Penetration Testing Documentation
-
-Executive Findings
-
-Remediation Planning
-
-</div>
-
-</div>
-
----
-
-# Learning Outcomes
-
-After completing this assessment, the following concepts were reinforced.
-
-## Web Application Security
-
-* WordPress reconnaissance methodology.
-* Plugin attack surface analysis.
-* Local File Inclusion exploitation.
-* Configuration disclosure risks.
-
-## Linux Security
-
-* Interactive shell stabilization.
-* Filesystem enumeration.
-* Credential harvesting.
-* SSH authentication review.
-* Backup security assessment.
-
-## Privilege Escalation
-
-* sudo privilege enumeration.
-* Least Privilege violations.
-* Administrative access validation.
-* Security impact assessment.
-
----
-
-# Visual Evidence Gallery
-
-<div class="gallery-grid">
-
-<div>
-
-![Network](assets/img/02-network-recon.svg)
-
-**Network Reconnaissance**
-
-</div>
-
-<div>
-
-![Enumeration](assets/img/03-web-enumeration.svg)
-
-**Web Enumeration**
-
-</div>
-
-<div>
-
-![WPScan](assets/img/04-plugin-enumeration.svg)
-
-**WordPress Enumeration**
-
-</div>
-
-<div>
+### Exploitation and initial access
 
 ![LFI](assets/img/05-lfi-wp-config-redacted.svg)
 
-**Configuration Disclosure**
-
-</div>
-
-<div>
+*Figure 05. Configuration disclosure with sensitive values redacted.*
 
 ![Backdoor](assets/img/06-backdoor-source.svg)
 
-**PHP Backdoor Analysis**
-
-</div>
-
-<div>
+*Figure 06. PHP backdoor source analysis.*
 
 ![RCE](assets/img/07-rce-confirmation.svg)
 
-**Remote Code Execution**
+*Figure 07. Remote command execution evidence.*
 
-</div>
+![Reverse Shell](assets/img/08-reverse-shell.svg)
 
-<div>
+*Figure 08. Interactive shell evidence.*
 
-![Shell](assets/img/08-reverse-shell.svg)
+### Credentials and lateral movement
 
-**Reverse Shell**
+![Database Records](assets/img/09-wp-user-db-redacted.svg)
 
-</div>
+*Figure 09. WordPress authentication-record investigation.*
 
-<div>
+![Password Recovery](assets/img/10-diego-crack-redacted.svg)
 
-![Database](assets/img/09-wp-user-db-redacted.svg)
+*Figure 10. Offline password-recovery workflow.*
 
-**Credential Harvesting**
+![SSH Key](assets/img/11-ssh-key-redacted.svg)
 
-</div>
+*Figure 11. SSH authentication material, redacted.*
 
-<div>
+![Backup Archive](assets/img/12-backup-transfer.svg)
 
-![Hashes](assets/img/10-diego-crack-redacted.svg)
+*Figure 12. Backup archive discovery.*
 
-**Password Recovery Workflow**
+![Archive Password Recovery](assets/img/13-backup-crack-redacted.svg)
 
-</div>
+*Figure 13. Archive password-recovery evidence, redacted.*
 
-<div>
+![Historical Configuration](assets/img/14-xavi-config-redacted.svg)
 
-![SSH](assets/img/11-ssh-key-redacted.svg)
+*Figure 14. Historical configuration review.*
 
-**SSH Pivot**
+### Privilege escalation
 
-</div>
+![Privilege Escalation](assets/img/15-privilege-escalation.svg)
 
-<div>
-
-![Backup](assets/img/12-backup-transfer.svg)
-
-**Backup Discovery**
-
-</div>
-
-<div>
-
-![Archive](assets/img/13-backup-crack-redacted.svg)
-
-**Archive Password Recovery**
-
-</div>
-
-<div>
-
-![Credentials](assets/img/14-xavi-config-redacted.svg)
-
-**Historical Credential Discovery**
-
-</div>
-
-<div>
-
-![Root](assets/img/15-privilege-escalation.svg)
-
-**Root Privilege Escalation**
-
-</div>
-
-</div>
+*Figure 15. Root privilege-escalation evidence.*
 
 ---
 
-# Lessons Learned
+## Lessons Learned
 
-<div class="lessons-grid">
+### Offensive security
 
-<div class="lesson-card">
+- Enumerating WordPress plugins can expose attack paths not visible from the initial network scan.
+- A file-inclusion vulnerability can expose configuration information that creates additional opportunities for compromise.
+- Unexpected PHP execution functionality can turn application access into operating-system command execution.
+- Credential discovery and SSH access can extend the impact beyond the original web-server account.
+- Historical backup files can preserve secrets and configuration that are no longer required.
+- Excessive sudo permissions can convert ordinary user access into administrative compromise.
 
-## 🔍 Offensive Takeaways
+### Defensive security
 
-A seemingly small WordPress vulnerability became a complete Linux compromise through chained weaknesses.
+- Third-party plugin integrity is part of the application's security boundary.
+- Configuration files, database records, SSH keys, and backups require explicit access controls.
+- Password reuse increases the impact of a credential leak.
+- Least-privilege controls must apply to both service accounts and interactive users.
+- Detection should correlate application changes, process execution, filesystem access, authentication events, and privileged commands.
 
-</div>
+### Reporting and methodology
 
-<div class="lesson-card">
-
-## 🔐 Identity Takeaways
-
-Credential reuse and poor secret storage dramatically increase attacker capability after initial compromise.
-
-</div>
-
-<div class="lesson-card">
-
-## 🛡️ Defensive Takeaways
-
-Least Privilege, plugin integrity monitoring, and secure backup management would have interrupted the attack chain.
-
-</div>
-
-<div class="lesson-card">
-
-## 📑 Reporting Takeaways
-
-Professional penetration testing reports should document methodology, evidence, impact, and remediation—not simply exploit steps.
-
-</div>
-
-</div>
+This case study illustrates why a penetration testing report should connect each major finding to evidence, impact, and remediation. A clear attack chain helps readers understand not only which weaknesses were present but also how their combined effect increased the scope of compromise.
 
 ---
 
-# References
+## References
 
-## Security Frameworks
+The source documentation names the following resources. No external URLs, version-specific advisories, or CVE identifiers were supplied.
 
-* MITRE ATT&CK Framework
-* OWASP Web Security Testing Guide
-* WordPress Security Documentation
-* GTFOBins (Privilege Escalation Reference)
+- MITRE ATT&CK Framework
+- OWASP Web Security Testing Guide
+- WordPress Security Documentation
+- GTFOBins — Linux privilege-escalation reference
 
----
+### Tools referenced in the assessment
 
-## Tools Used
-
-| Tool            | Purpose                               |
-| --------------- | ------------------------------------- |
-| Nmap            | Network Reconnaissance                |
-| Gobuster        | Directory Enumeration                 |
-| WPScan          | WordPress Enumeration                 |
-| Netcat          | Reverse Shell Listener                |
-| Python          | TTY Stabilization                     |
-| SSH             | Lateral Movement                      |
-| zipinfo / unzip | Backup Analysis                       |
-| John / Hashcat  | Offline Password Recovery Methodology |
+| Tool | Documented purpose |
+|---|---|
+| Nmap | Network and service enumeration |
+| Gobuster | Directory enumeration |
+| WPScan | WordPress enumeration |
+| Netcat | Reverse-shell listener |
+| Python | PTY stabilization |
+| SSH | Remote user authentication |
+| `zipinfo` / `unzip` | Backup archive analysis |
+| John / Hashcat | Offline password-recovery methodology |
 
 ---
 
-# Repository Contents
+## Repository Contents
 
-<div class="repo-grid">
+The original document identifies the following repository resources:
 
-<div class="repo-card">
-
-### 📘 Documentation
-
-Complete technical penetration testing report.
-
-`Documentation/Documentation.md`
-
+<div class="ctf-card-grid">
+  <div class="ctf-card">
+    <div class="ctf-card-title">GitHub Pages</div>
+    <div class="ctf-card-value">`docs/index.md` — portfolio landing page and technical case study</div>
+  </div>
+  <div class="ctf-card">
+    <div class="ctf-card-title">Documentation</div>
+    <div class="ctf-card-value">`Documentation/Documentation.md` — referenced technical report</div>
+  </div>
+  <div class="ctf-card">
+    <div class="ctf-card-title">Learning Notes</div>
+    <div class="ctf-card-value">`Resources/notes.md` — referenced command notes and learning material</div>
+  </div>
+  <div class="ctf-card">
+    <div class="ctf-card-title">Evidence Assets</div>
+    <div class="ctf-card-value">`docs/assets/img/` — original SVG illustrations and evidence</div>
+  </div>
 </div>
 
-<div class="repo-card">
-
-### 🌐 GitHub Pages
-
-Premium cybersecurity portfolio landing page.
-
-`docs/index.md`
-
-</div>
-
-<div class="repo-card">
-
-### 📝 Notes
-
-Quick reference commands and learning notes.
-
-`Resources/notes.md`
-
-</div>
-
-<div class="repo-card">
-
-### 🎨 Assets
-
-SVG illustrations and evidence gallery.
-
-`docs/assets/img/`
-
-</div>
-
-</div>
+These paths are retained as references from the source documentation; their presence in the current repository has not been independently verified.
 
 ---
 
-# About This Portfolio Project
+## Responsible Use
 
-<div class="portfolio-card">
+> This documentation was prepared for authorized cybersecurity training and CTF environments. Techniques described here should only be used against systems for which explicit permission has been granted. Credentials, private keys, password hashes, and challenge flags are intentionally redacted in this portfolio version.
 
-## Professional Cybersecurity Portfolio
-
-This project demonstrates a complete end-to-end penetration testing engagement within a controlled TryHackMe environment.
-
-The documentation has been rewritten to resemble an **enterprise Red Team technical assessment** rather than a standard Capture The Flag walkthrough.
-
-### Portfolio Highlights
-
-* Professional penetration testing methodology.
-* Enterprise-style documentation.
-* GitHub Pages compatible.
-* Recruiter-friendly presentation.
-* Original diagrams and SVG figures.
-* Flags and sensitive values fully redacted.
-
-</div>
-
----
-
-# Author
-
-<div class="author-section">
-
-## Anurag Revankar
-
-Cybersecurity Researcher • Penetration Tester • Security Automation Enthusiast
-
-Specializing in:
-
-* Offensive Security
-* Active Directory
-* Web Application Security
-* AI-powered SOC Engineering
-* Cloud Security
-* Security Automation
-* Capture The Flag Documentation
-
-**GitHub Portfolio**
-
-`anurag-rvnkr1`
-
-</div>
-
----
-
-# Portfolio Footer
-
-<div class="footer-banner">
-
-# Smol — TryHackMe Walkthrough
-
-### Professional Red Team Case Study • WordPress Security Assessment
-
-**Capture The Flag Documentation • GitHub Pages Portfolio • Cybersecurity Learning Resource**
-
-⭐ **Designed as a premium cybersecurity portfolio project for recruiters and hiring managers.**
-
-</div>
