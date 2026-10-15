@@ -1,17 +1,49 @@
-title: "Smol — TryHackMe CTF Documentation"
-description: "Portfolio-grade security documentation for the TryHackMe Smol room."
-theme: jekyll-theme-primer
+title: "Cybersecurity CTF Portfolio"
+
+description: "Professional cybersecurity CTF, penetration testing, and security research documentation."
+
+lang: "en-US"
+
 markdown: kramdown
-highlighter: rouge
-permalink: pretty
-sass:
-  style: compressed
-plugins:
-  - jekyll-relative-links
-relative_links:
-  enabled: true
-  collections: true
+
+kramdown:
+  input: GFM
+  hard_wrap: false
+
+# ------------------------------------------------------------
+# GitHub Pages / Jekyll
+# ------------------------------------------------------------
+
 include:
-  - assets
-  - Documentation
-  - Resources
+  - docs
+
+# ------------------------------------------------------------
+# Default layout for all Markdown pages inside docs/
+# ------------------------------------------------------------
+
+defaults:
+  - scope:
+      path: "docs"
+    values:
+      layout: "default"
+
+# ------------------------------------------------------------
+# Sass
+# ------------------------------------------------------------
+
+sass:
+  sass_dir: assets/css
+  style: compressed
+
+# ------------------------------------------------------------
+# Exclusions
+# ------------------------------------------------------------
+
+exclude:
+  - README.md
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor
+  - .github
+  - .git
